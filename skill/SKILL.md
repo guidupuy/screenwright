@@ -12,11 +12,11 @@ You are Screenwright, a tool that converts Playwright E2E tests into cinematic p
 
 Check if the CLI is available:
 ```bash
-which screenwright || npx @screenwright/cli --version
+which screenwright || npx screenwright --version
 ```
 
 If not found, tell the user:
-> Install Screenwright: `npm install -g @screenwright/cli`
+> Install Screenwright: `npm install -g screenwright`
 > Then run `screenwright init` to download the voice model.
 
 ## Output Directory
@@ -66,7 +66,7 @@ After the user selects a test, ask these questions:
 Read the selected test file. Then generate a demo scenario TypeScript file.
 
 The scenario must:
-- Import `ScreenwrightHelpers` from `@screenwright/cli`
+- Import `ScreenwrightHelpers` from `screenwright`
 - Export a default async function: `export default async function scenario(sw: ScreenwrightHelpers)`
 - Use the `sw.*` API exclusively:
   - `sw.scene(title, description?)` — scene/chapter boundary
@@ -88,7 +88,7 @@ The scenario must:
 #### Example 1: Login Flow
 
 ```typescript
-import type { ScreenwrightHelpers } from '@screenwright/cli';
+import type { ScreenwrightHelpers } from 'screenwright';
 
 export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.scene('Signing In');
@@ -113,7 +113,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
 #### Example 2: Multi-Step Form
 
 ```typescript
-import type { ScreenwrightHelpers } from '@screenwright/cli';
+import type { ScreenwrightHelpers } from 'screenwright';
 
 export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.scene('Starting the Application');
@@ -158,7 +158,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
 
 After generating the scenario, validate it against these rules before presenting to the user:
 
-1. **Must have** `import ... { ScreenwrightHelpers } from '@screenwright/cli'` (accepts `import type`, `import { type ... }`, single or double quotes)
+1. **Must have** `import ... { ScreenwrightHelpers } from 'screenwright'` (accepts `import type`, `import { type ... }`, single or double quotes)
 2. **Must have** `export default async function`
 3. **Must NOT** use raw `page.*()` calls — only `sw.*` helpers
 4. **Must NOT** import or call `expect()` or `assert()`
@@ -212,7 +212,7 @@ Demo video saved to: .screenwright/output/<name>-demo.mp4
 - If Piper TTS fails: suggest `--no-voiceover` flag or re-run `screenwright init`
 - If a selector fails: show the error and offer to edit the scenario
 - If scenario has validation errors after generation: include the specific error codes and messages when retrying generation, and fix only the flagged issues
-- If compose fails with an import error: check scenario syntax — ensure `import type { ScreenwrightHelpers } from '@screenwright/cli'` is present
+- If compose fails with an import error: check scenario syntax — ensure `import type { ScreenwrightHelpers } from 'screenwright'` is present
 - If compose fails with "must export default async function": ensure the scenario has `export default async function scenario(sw: ScreenwrightHelpers)`
 
 ## Notes

@@ -84,8 +84,8 @@ export function validateScenarioCode(code: string): ValidationResult {
   }
 
   // Missing ScreenwrightHelpers import
-  if (!/import\s+(?:type\s+)?\{[^}]*(?:type\s+)?ScreenwrightHelpers[^}]*\}\s+from\s+['"]@screenwright\/cli['"]/.test(code)) {
-    errors.push({ code: 'MISSING_IMPORT', message: 'Missing ScreenwrightHelpers import from @screenwright/cli' });
+  if (!/import\s+(?:type\s+)?\{[^}]*(?:type\s+)?ScreenwrightHelpers[^}]*\}\s+from\s+['"]screenwright['"]/.test(code)) {
+    errors.push({ code: 'MISSING_IMPORT', message: 'Missing ScreenwrightHelpers import from screenwright' });
   }
 
   // Missing default async export

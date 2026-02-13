@@ -19,7 +19,7 @@ Available helpers:
 - sw.narrate(text) — speak narration without an action
 
 Rules:
-1. Import only ScreenwrightHelpers from '@screenwright/cli'
+1. Import only ScreenwrightHelpers from 'screenwright'
 2. Export a default async function
 3. Replace ALL test/faker data with realistic human-friendly values
 4. Add narration to key actions explaining what the user is doing
@@ -31,7 +31,7 @@ Rules:
 Output format — always follow this exact structure:
 
 \`\`\`typescript
-import type { ScreenwrightHelpers } from '@screenwright/cli';
+import type { ScreenwrightHelpers } from 'screenwright';
 
 export default async function scenario(sw: ScreenwrightHelpers) {
   // Scene 1
@@ -80,7 +80,7 @@ test('checkout flow', async ({ page }) => {
 
 Output:
 \`\`\`typescript
-import type { ScreenwrightHelpers } from '@screenwright/cli';
+import type { ScreenwrightHelpers } from 'screenwright';
 
 export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.scene('Shopping for a Laptop');

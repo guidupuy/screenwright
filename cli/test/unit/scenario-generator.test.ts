@@ -17,7 +17,7 @@ describe('validateScenarioCode', () => {
   });
 
   it('accepts import type { ScreenwrightHelpers }', () => {
-    const code = `import type { ScreenwrightHelpers } from '@screenwright/cli';
+    const code = `import type { ScreenwrightHelpers } from 'screenwright';
 export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.scene('test'); await sw.wait(1000);
 }`;
@@ -25,7 +25,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
   });
 
   it('accepts import { ScreenwrightHelpers } (no type keyword)', () => {
-    const code = `import { ScreenwrightHelpers } from '@screenwright/cli';
+    const code = `import { ScreenwrightHelpers } from 'screenwright';
 export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.scene('test'); await sw.wait(1000);
 }`;
@@ -33,7 +33,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
   });
 
   it('accepts import { type ScreenwrightHelpers } (inline type)', () => {
-    const code = `import { type ScreenwrightHelpers } from '@screenwright/cli';
+    const code = `import { type ScreenwrightHelpers } from 'screenwright';
 export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.scene('test'); await sw.wait(1000);
 }`;
@@ -41,11 +41,11 @@ export default async function scenario(sw: ScreenwrightHelpers) {
   });
 
   it('accepts single and double quotes', () => {
-    const single = `import type { ScreenwrightHelpers } from '@screenwright/cli';
+    const single = `import type { ScreenwrightHelpers } from 'screenwright';
 export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.scene('test'); await sw.wait(1000);
 }`;
-    const double = `import type { ScreenwrightHelpers } from "@screenwright/cli";
+    const double = `import type { ScreenwrightHelpers } from "screenwright";
 export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.scene('test'); await sw.wait(1000);
 }`;
@@ -72,7 +72,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
   });
 
   it('rejects missing default export → MISSING_DEFAULT_EXPORT', () => {
-    const code = `import type { ScreenwrightHelpers } from '@screenwright/cli';
+    const code = `import type { ScreenwrightHelpers } from 'screenwright';
 async function scenario(sw: ScreenwrightHelpers) {
   await sw.scene('test'); await sw.wait(1000);
 }`;
@@ -81,7 +81,7 @@ async function scenario(sw: ScreenwrightHelpers) {
   });
 
   it('rejects non-async export default function → MISSING_DEFAULT_EXPORT', () => {
-    const code = `import type { ScreenwrightHelpers } from '@screenwright/cli';
+    const code = `import type { ScreenwrightHelpers } from 'screenwright';
 export default function scenario(sw: ScreenwrightHelpers) {
   sw.scene('test'); sw.wait(1000);
 }`;
@@ -90,7 +90,7 @@ export default function scenario(sw: ScreenwrightHelpers) {
   });
 
   it('rejects raw page.click() → RAW_PAGE_CALL', () => {
-    const code = `import type { ScreenwrightHelpers } from '@screenwright/cli';
+    const code = `import type { ScreenwrightHelpers } from 'screenwright';
 export default async function scenario(sw: ScreenwrightHelpers) {
   await page.click('#btn');
   await sw.scene('test'); await sw.wait(1000);
@@ -100,7 +100,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
   });
 
   it('allows sw.page.evaluate() (via lookbehind)', () => {
-    const code = `import type { ScreenwrightHelpers } from '@screenwright/cli';
+    const code = `import type { ScreenwrightHelpers } from 'screenwright';
 export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.page.evaluate(() => {});
   await sw.scene('test'); await sw.wait(1000);
@@ -110,7 +110,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
   });
 
   it('rejects expect() calls → ASSERTION_CALL', () => {
-    const code = `import type { ScreenwrightHelpers } from '@screenwright/cli';
+    const code = `import type { ScreenwrightHelpers } from 'screenwright';
 export default async function scenario(sw: ScreenwrightHelpers) {
   expect(true).toBe(true);
   await sw.scene('test'); await sw.wait(1000);
@@ -120,7 +120,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
   });
 
   it('rejects assert() calls → ASSERTION_CALL', () => {
-    const code = `import type { ScreenwrightHelpers } from '@screenwright/cli';
+    const code = `import type { ScreenwrightHelpers } from 'screenwright';
 export default async function scenario(sw: ScreenwrightHelpers) {
   assert(true);
   await sw.scene('test'); await sw.wait(1000);
@@ -130,7 +130,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
   });
 
   it('rejects import { expect } → ASSERTION_IMPORT', () => {
-    const code = `import type { ScreenwrightHelpers } from '@screenwright/cli';
+    const code = `import type { ScreenwrightHelpers } from 'screenwright';
 import { expect } from '@playwright/test';
 export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.scene('test'); await sw.wait(1000);
@@ -150,7 +150,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
   });
 
   it('warns on no scenes → NO_SCENES', () => {
-    const code = `import type { ScreenwrightHelpers } from '@screenwright/cli';
+    const code = `import type { ScreenwrightHelpers } from 'screenwright';
 export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.navigate('http://localhost:3000', { narration: 'hello' });
   await sw.wait(1000);
@@ -161,7 +161,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
   });
 
   it('warns on no waits → NO_WAITS', () => {
-    const code = `import type { ScreenwrightHelpers } from '@screenwright/cli';
+    const code = `import type { ScreenwrightHelpers } from 'screenwright';
 export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.scene('test');
   await sw.navigate('http://localhost:3000', { narration: 'hello' });
@@ -171,7 +171,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
   });
 
   it('warns on no narration → NO_NARRATION', () => {
-    const code = `import type { ScreenwrightHelpers } from '@screenwright/cli';
+    const code = `import type { ScreenwrightHelpers } from 'screenwright';
 export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.scene('test');
   await sw.click('#btn');
@@ -224,7 +224,7 @@ describe('extractScenarioCode', () => {
       '',
       'And here is the full scenario:',
       '```typescript',
-      'import type { ScreenwrightHelpers } from "@screenwright/cli";',
+      'import type { ScreenwrightHelpers } from "screenwright";',
       '',
       'export default async function scenario(sw: ScreenwrightHelpers) {',
       '  await sw.scene("test");',

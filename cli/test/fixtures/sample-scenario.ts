@@ -1,4 +1,4 @@
-import type { ScreenwrightHelpers } from '@screenwright/cli';
+import type { ScreenwrightHelpers } from 'screenwright';
 
 export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.scene('Signing In');

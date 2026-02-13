@@ -10,7 +10,7 @@ export const defaultConfig: ScreenwrightConfig = {
 };
 
 export function serializeConfig(config: ScreenwrightConfig): string {
-  return `import type { ScreenwrightConfig } from '@screenwright/cli';
+  return `import type { ScreenwrightConfig } from 'screenwright';
 
 const config: ScreenwrightConfig = ${JSON.stringify(config, null, 2)};
 
