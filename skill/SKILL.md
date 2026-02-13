@@ -19,6 +19,17 @@ If not found, tell the user:
 > Install Screenwright: `npm install -g @screenwright/cli`
 > Then run `screenwright init` to download the voice model.
 
+## Output Directory
+
+All Screenwright artifacts are written to `.screenwright/` at the project root:
+- `.screenwright/scenarios/` — generated demo scenario files
+- `.screenwright/output/` — final rendered videos
+
+Before writing any files, ensure `.screenwright` is in the project's `.gitignore`:
+```bash
+grep -qxF '.screenwright' .gitignore 2>/dev/null || echo '.screenwright' >> .gitignore
+```
+
 ## Workflow
 
 Follow these steps in order. Ask each question and wait for the user's response before proceeding.
@@ -107,13 +118,13 @@ Here's the generated demo scenario. Want me to:
   3. Regenerate it
 ```
 
-Write the approved scenario to `./demos/<test-name>-demo.ts`.
+Write the approved scenario to `.screenwright/scenarios/<test-name>-demo.ts`.
 
 ### Step 5: Compose Video
 
 Run the CLI to record and compose the final video:
 ```bash
-screenwright compose ./demos/<name>-demo.ts --out ./output/<name>-demo.mp4
+screenwright compose .screenwright/scenarios/<name>-demo.ts --out .screenwright/output/<name>-demo.mp4
 ```
 
 Options the user can request:
@@ -126,7 +137,7 @@ Options the user can request:
 
 When compose finishes, report:
 ```
-Demo video saved to: ./output/<name>-demo.mp4
+Demo video saved to: .screenwright/output/<name>-demo.mp4
   Duration: X:XX
   Size: XXmb
   Events: N
