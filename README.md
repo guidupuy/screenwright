@@ -30,19 +30,21 @@ npm install -g screenwright
 screenwright init
 ```
 
-`screenwright init` creates a config file and downloads the Piper TTS voice model (~50MB).
+`screenwright init` creates a config file, downloads the Piper TTS voice model (~50MB), and auto-installs the coding assistant skill for detected assistants (Claude Code, Codex).
 
 **Prerequisites:** Node.js >= 20, Playwright browsers (`npx playwright install chromium`)
 
 ### Claude Code Skill
 
-Copy the skill file into your Claude Code skills directory:
+`screenwright init` auto-detects Claude Code and offers to install the skill. You can also install it manually:
 
 ```bash
 mkdir -p ~/.claude/skills/screenwright
 curl -sL https://raw.githubusercontent.com/guidupuy/screenwright/main/skill/SKILL.md \
   -o ~/.claude/skills/screenwright/SKILL.md
 ```
+
+Once installed, the skill is automatically kept in sync when you upgrade the `screenwright` npm package.
 
 Then use `/screenwright` in Claude Code to get started.
 
@@ -75,16 +77,17 @@ screenwright preview ./demos/checkout-demo.ts
 
 ### `screenwright init`
 
-Bootstrap config and download voice model.
+Bootstrap config, download voice model, and install coding assistant skills.
 
 ```bash
-screenwright init [--voice <model>] [--skip-voice-download]
+screenwright init [--voice <model>] [--skip-voice-download] [--skip-skill-install]
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--voice` | `en_US-amy-medium` | Piper TTS voice model |
 | `--skip-voice-download` | false | Skip downloading voice model |
+| `--skip-skill-install` | false | Skip coding assistant skill installation |
 
 ### `screenwright generate`
 
@@ -209,6 +212,18 @@ cli/
 skill/
   SKILL.md          # Claude Code skill definition
 ```
+
+## Releasing
+
+Bump the version in `cli/package.json`, commit, tag, and push:
+
+```bash
+# edit cli/package.json version
+git add cli/package.json && git commit -m "Release v0.X.Y"
+git tag v0.X.Y && git push origin main --tags
+```
+
+GitHub Actions publishes to npm via [trusted publishing](https://docs.npmjs.com/trusted-publishers) and creates a GitHub Release automatically.
 
 ## License
 

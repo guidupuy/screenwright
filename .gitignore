@@ -9,3 +9,4 @@ dist/
 *.wav
 .screenwright/
 cli/src/version.ts
+cli/skill/
