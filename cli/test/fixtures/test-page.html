@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+  <h1>Test Store</h1>
+  <button data-testid="product-laptop">MacBook Pro - $2,499</button>
+  <button data-testid="add-to-cart">Add to Cart</button>
+  <input data-testid="email" type="email" placeholder="Email" />
+  <button data-testid="checkout">Checkout</button>
+  <div class="confirmation" style="display: none;">Order confirmed!</div>
+  <script>
+    document.querySelector('[data-testid="checkout"]').addEventListener('click', () => {
+      document.querySelector('.confirmation').style.display = 'block';
+    });
+  </script>
+</body>
+</html>

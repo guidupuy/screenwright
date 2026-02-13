@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "metadata": {
+    "testFile": "tests/checkout.spec.ts",
+    "scenarioFile": "demos/checkout-demo.ts",
+    "recordedAt": "2026-02-13T12:00:00Z",
+    "viewport": { "width": 1280, "height": 720 },
+    "videoDurationMs": 45000,
+    "videoFile": "/tmp/screenwright-abc/recording.webm"
+  },
+  "events": [
+    {
+      "type": "scene",
+      "id": "ev-001",
+      "timestampMs": 0,
+      "title": "Browsing the catalog"
+    },
+    {
+      "type": "narration",
+      "id": "ev-002",
+      "timestampMs": 200,
+      "text": "Let's browse the electronics catalog."
+    },
+    {
+      "type": "wait",
+      "id": "ev-003",
+      "timestampMs": 200,
+      "durationMs": 2500,
+      "reason": "narration_sync"
+    },
+    {
+      "type": "cursor_target",
+      "id": "ev-004",
+      "timestampMs": 2700,
+      "fromX": 640,
+      "fromY": 360,
+      "toX": 450,
+      "toY": 280,
+      "moveDurationMs": 800,
+      "easing": "bezier"
+    },
+    {
+      "type": "action",
+      "id": "ev-005",
+      "timestampMs": 3500,
+      "action": "click",
+      "selector": "[data-testid='product-laptop']",
+      "durationMs": 200,
+      "boundingBox": { "x": 400, "y": 250, "width": 100, "height": 60 }
+    }
+  ]
+}

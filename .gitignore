@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+/output/
+/demos/
+*.webm
+*.mp4
+*.wav
+.screenwright/
