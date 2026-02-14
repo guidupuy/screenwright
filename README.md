@@ -26,8 +26,8 @@ Playwright test → Demo scenario → Record with pacing → Compose video
 ### CLI
 
 ```bash
-npm install -g screenwright
-screenwright init
+npm install -D screenwright
+npx screenwright init
 ```
 
 `screenwright init` creates a config file, sets up your TTS provider (Piper for local/offline or OpenAI for cloud), and auto-installs the coding assistant skill for detected assistants (Claude Code, Codex).
@@ -62,15 +62,15 @@ The skill walks you through test selection, scenario generation, and video compo
 
 ```bash
 # 1. Generate a demo scenario from a Playwright test
-screenwright generate --test ./tests/checkout.spec.ts
+npx screenwright generate --test ./tests/checkout.spec.ts
 
 # 2. Review and edit the generated scenario at ./demos/checkout-demo.ts
 
 # 3. Compose the final video
-screenwright compose ./demos/checkout-demo.ts
+npx screenwright compose ./demos/checkout-demo.ts
 
 # 4. Or quickly preview without cursor/voiceover
-screenwright preview ./demos/checkout-demo.ts
+npx screenwright preview ./demos/checkout-demo.ts
 ```
 
 ## CLI Reference
@@ -80,7 +80,7 @@ screenwright preview ./demos/checkout-demo.ts
 Bootstrap config, set up TTS provider, and install coding assistant skills.
 
 ```bash
-screenwright init [--tts piper|openai] [--voice <model>] [--openai-voice <voice>] [--skip-voice-download] [--skip-skill-install]
+npx screenwright init [--tts piper|openai] [--voice <model>] [--openai-voice <voice>] [--skip-voice-download] [--skip-skill-install]
 ```
 
 | Flag | Default | Description |
@@ -96,8 +96,8 @@ screenwright init [--tts piper|openai] [--voice <model>] [--openai-voice <voice>
 Generate a demo scenario from a Playwright test, or validate an existing one.
 
 ```bash
-screenwright generate --test <path> [--out <path>] [--narration-style brief|detailed] [--app-description <desc>]
-screenwright generate --validate <path>
+npx screenwright generate --test <path> [--out <path>] [--narration-style brief|detailed] [--app-description <desc>]
+npx screenwright generate --validate <path>
 ```
 
 | Flag | Default | Description |
@@ -113,7 +113,7 @@ screenwright generate --validate <path>
 Record scenario and compose final MP4 with cursor overlay and voiceover.
 
 ```bash
-screenwright compose <scenario> [--out <path>] [--resolution WxH]
+npx screenwright compose <scenario> [--out <path>] [--resolution WxH]
 ```
 
 | Flag | Default | Description |
@@ -129,7 +129,7 @@ screenwright compose <scenario> [--out <path>] [--resolution WxH]
 Quick preview (WebM) without cursor overlay or voiceover.
 
 ```bash
-screenwright preview <scenario> [--out <path>]
+npx screenwright preview <scenario> [--out <path>]
 ```
 
 ## Demo Scenario API
@@ -203,7 +203,7 @@ npx playwright install chromium
 Make sure your dev server is running before composing.
 
 **"Voiceover generation failed"**
-Re-run `screenwright init` to download the Piper TTS binary. Or use `--no-voiceover` to skip.
+Re-run `npx screenwright init` to download the Piper TTS binary. Or use `--no-voiceover` to skip.
 
 **"Out of memory during rendering"**
 Try a lower resolution: `--resolution 1280x720`
