@@ -20,7 +20,7 @@ describe('Piper TTS', () => {
     try {
       const result = await synthesize('Hello world', outPath, modelPath, piperBin);
 
-      expect(result.wavPath).toBe(outPath);
+      expect(result.audioPath).toBe(outPath);
       expect(result.durationMs).toBeGreaterThan(0);
 
       const fileStat = await stat(outPath);
