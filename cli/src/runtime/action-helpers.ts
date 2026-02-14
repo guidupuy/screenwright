@@ -88,7 +88,10 @@ export function createHelpers(page: Page, collector: TimelineCollector, opts?: H
 
   async function emitNarration(text: string): Promise<void> {
     const estimatedMs = estimateNarrationMs(text);
-    const actualWaitMs = Math.round(estimatedMs * narrationOverlap * pm);
+    // Wait at least the full narration duration to prevent overlap,
+    // plus optional breathing room controlled by narrationOverlap * pm.
+    const padding = Math.round(estimatedMs * narrationOverlap * pm);
+    const actualWaitMs = estimatedMs + padding;
     collector.emit({ type: 'narration', text });
     collector.emit({ type: 'wait', durationMs: actualWaitMs, reason: 'narration_sync' as const });
     await timedWait(actualWaitMs, 0);

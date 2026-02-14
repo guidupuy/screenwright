@@ -18,20 +18,10 @@ export async function loadConfig(cwd?: string): Promise<ScreenwrightConfig> {
   }
 
   let mod: any;
-  const originalEmit = process.emit;
-  // @ts-expect-error -- monkey-patch to suppress MODULE_TYPELESS_PACKAGE_JSON for user config files
-  process.emit = function (event, ...args) {
-    if (event === 'warning' && args[0]?.code === 'MODULE_TYPELESS_PACKAGE_JSON') {
-      return false;
-    }
-    return originalEmit.apply(process, [event, ...args] as any);
-  };
   try {
     mod = await import(pathToFileURL(configPath).href);
   } catch (err: any) {
     throw new Error(`Failed to load screenwright.config.ts: ${err.message}`);
-  } finally {
-    process.emit = originalEmit;
   }
 
   const raw = mod.default;

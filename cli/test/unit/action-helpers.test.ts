@@ -194,7 +194,7 @@ describe('createHelpers', () => {
     expect(lastCall![0]).toBe(45);
   });
 
-  it('narration overlap reduces wait duration', async () => {
+  it('narration wait covers full duration plus pacing padding', async () => {
     const page = mockPage();
     const collector = new TimelineCollector();
     collector.start();
@@ -207,8 +207,9 @@ describe('createHelpers', () => {
     expect(waitEvent).toBeDefined();
 
     // 8 words → (8/150) * 60 * 1000 = 3200ms estimated
-    // actualWait = Math.round(3200 * 0.4 * 1.0) = 1280
-    expect(waitEvent.durationMs).toBe(1280);
+    // padding = Math.round(3200 * 0.4 * 1.0) = 1280
+    // actualWait = 3200 + 1280 = 4480
+    expect(waitEvent.durationMs).toBe(4480);
   });
 
   it('onFrame is called for click, fill, hover, press, navigate, wait', async () => {

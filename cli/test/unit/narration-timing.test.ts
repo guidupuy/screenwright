@@ -102,4 +102,33 @@ describe('generateNarration', () => {
     const result = await generateNarration(timeline, { tempDir: '/tmp', ttsProvider: 'openai' });
     expect((result.events[0] as any).audioFile).toMatch(/\.mp3$/);
   });
+
+  it('expands narration_sync wait when actual audio is longer than estimate', async () => {
+    // Mock returns 400ms/word. "word word word" = 3 words = 1200ms actual.
+    // Set the narration_sync wait to only 500ms to simulate a too-short estimate.
+    const timeline = makeTimeline([
+      { type: 'narration', id: 'ev-001', timestampMs: 0, text: 'word word word' },
+      { type: 'wait', id: 'ev-002', timestampMs: 0, durationMs: 500, reason: 'narration_sync' },
+    ]);
+
+    const result = await generateNarration(timeline, { tempDir: '/tmp' });
+
+    const wait = result.events[1] as any;
+    expect(wait.reason).toBe('narration_sync');
+    // Should be expanded to at least the actual audio duration (1200ms)
+    expect(wait.durationMs).toBe(1200);
+  });
+
+  it('keeps narration_sync wait when already longer than audio', async () => {
+    // 1 word = 400ms actual. Wait is 5000ms — should stay 5000ms.
+    const timeline = makeTimeline([
+      { type: 'narration', id: 'ev-001', timestampMs: 0, text: 'hello' },
+      { type: 'wait', id: 'ev-002', timestampMs: 0, durationMs: 5000, reason: 'narration_sync' },
+    ]);
+
+    const result = await generateNarration(timeline, { tempDir: '/tmp' });
+
+    const wait = result.events[1] as any;
+    expect(wait.durationMs).toBe(5000);
+  });
 });
