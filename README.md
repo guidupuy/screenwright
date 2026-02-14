@@ -30,7 +30,7 @@ npm install -g screenwright
 screenwright init
 ```
 
-`screenwright init` creates a config file, downloads the Piper TTS voice model (~50MB), and auto-installs the coding assistant skill for detected assistants (Claude Code, Codex).
+`screenwright init` creates a config file, sets up your TTS provider (Piper for local/offline or OpenAI for cloud), and auto-installs the coding assistant skill for detected assistants (Claude Code, Codex).
 
 **Prerequisites:** Node.js >= 20, Playwright browsers (`npx playwright install chromium`)
 
@@ -77,24 +77,27 @@ screenwright preview ./demos/checkout-demo.ts
 
 ### `screenwright init`
 
-Bootstrap config, download voice model, and install coding assistant skills.
+Bootstrap config, set up TTS provider, and install coding assistant skills.
 
 ```bash
-screenwright init [--voice <model>] [--skip-voice-download] [--skip-skill-install]
+screenwright init [--tts piper|openai] [--voice <model>] [--openai-voice <voice>] [--skip-voice-download] [--skip-skill-install]
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `--tts` | (interactive) | TTS provider: `piper` (local/free) or `openai` (cloud/higher quality) |
 | `--voice` | `en_US-amy-medium` | Piper TTS voice model |
-| `--skip-voice-download` | false | Skip downloading voice model |
+| `--openai-voice` | `nova` | OpenAI voice name |
+| `--skip-voice-download` | false | Skip downloading Piper voice model |
 | `--skip-skill-install` | false | Skip coding assistant skill installation |
 
 ### `screenwright generate`
 
-Generate a demo scenario from a Playwright test.
+Generate a demo scenario from a Playwright test, or validate an existing one.
 
 ```bash
-screenwright generate --test <path> [--out <path>] [--narration-style brief|detailed]
+screenwright generate --test <path> [--out <path>] [--narration-style brief|detailed] [--app-description <desc>]
+screenwright generate --validate <path>
 ```
 
 | Flag | Default | Description |
@@ -102,27 +105,29 @@ screenwright generate --test <path> [--out <path>] [--narration-style brief|deta
 | `--test` | (required) | Path to Playwright test file |
 | `--out` | `./demos/<name>-demo.ts` | Output path |
 | `--narration-style` | `detailed` | `brief` or `detailed` narration |
-| `--data-profile` | - | JSON app description for fixture replacement |
+| `--app-description` | - | Brief description of the app for context |
+| `--validate` | - | Validate an existing scenario file |
 
 ### `screenwright compose`
 
 Record scenario and compose final MP4 with cursor overlay and voiceover.
 
 ```bash
-screenwright compose <scenario> [--out <path>] [--resolution WxH]
+screenwright compose <scenario> [--out <path>] [--resolution WxH] [--capture frames|video]
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--out` | `./output/<name>.mp4` | Output path |
 | `--resolution` | `1280x720` | Video resolution |
+| `--capture` | `frames` | Capture mode: `frames` or `video` |
 | `--no-voiceover` | false | Skip voiceover audio |
 | `--no-cursor` | false | Skip cursor overlay |
 | `--keep-temp` | false | Keep intermediate files |
 
 ### `screenwright preview`
 
-Quick preview — raw recording without cursor overlay or voiceover.
+Quick preview (WebM) without cursor overlay or voiceover.
 
 ```bash
 screenwright preview <scenario> [--out <path>]
@@ -167,16 +172,27 @@ export default async function scenario(sw: ScreenwrightHelpers) {
 
 ```typescript
 const config = {
-  voice: "en_US-amy-medium",
+  // TTS
+  ttsProvider: "piper",              // "piper" (local/free) or "openai" (cloud)
+  voice: "en_US-amy-medium",         // Piper voice model
+  openaiVoice: "nova",               // OpenAI voice (when ttsProvider is "openai")
+  openaiTtsInstructions: "...",       // Tone instructions for OpenAI TTS
+
+  // Video
   resolution: { width: 1280, height: 720 },
+  captureMode: "frames",             // "frames" or "video"
   outputDir: "./output",
+
+  // Browser
   locale: "en-US",
   colorScheme: "light",
-  timezoneId: "America/New_York"
+  timezoneId: "America/New_York",
 };
 
 export default config;
 ```
+
+When using OpenAI TTS, set the `OPENAI_API_KEY` environment variable.
 
 ## Troubleshooting
 
@@ -195,7 +211,7 @@ Re-run `screenwright init` to download the Piper TTS binary. Or use `--no-voiceo
 Try a lower resolution: `--resolution 1280x720`
 
 **"Timed out waiting for an element"**
-Check that selectors in the scenario match your app's current DOM.
+Check that selectors in the scenario match your app's current DOM. The error message includes the exact `sw.*` call and selector that failed.
 
 ## Architecture
 
@@ -205,7 +221,7 @@ cli/
     commands/       # CLI commands (init, generate, compose, preview)
     runtime/        # Playwright instrumentation (sw.* helpers, timeline collector)
     composition/    # Remotion components (DemoVideo, CursorOverlay, NarrationTrack)
-    voiceover/      # Piper TTS engine and narration timing
+    voiceover/      # Piper TTS engine, OpenAI TTS engine, narration timing
     generator/      # LLM prompt templates for scenario generation
     timeline/       # Timeline JSON types and Zod schema
     config/         # Configuration schema and defaults
