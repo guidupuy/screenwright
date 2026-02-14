@@ -41,7 +41,7 @@ describe('runScenario — real Playwright', () => {
     // Metadata
     expect(result.timeline.version).toBe(1);
     expect(result.timeline.metadata.scenarioFile).toBe('test-scenario.ts');
-    expect(result.timeline.metadata.viewport).toEqual({ width: 1280, height: 720 });
+    expect(result.timeline.metadata.viewport).toEqual({ width: 2560, height: 1440 });
     expect(result.timeline.metadata.videoDurationMs).toBeGreaterThan(0);
 
     // Events — at least one of each type we emitted
