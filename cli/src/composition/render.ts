@@ -16,12 +16,14 @@ export interface RenderOptions {
  * via staticFile() against the publicDir — they only need filenames.
  */
 function toStaticPaths(timeline: Timeline): Timeline {
+  const meta = { ...timeline.metadata };
+  if (meta.videoFile) {
+    meta.videoFile = basename(meta.videoFile);
+  }
+  // frameManifest paths are already relative to publicDir — no rewrite needed
   return {
     ...timeline,
-    metadata: {
-      ...timeline.metadata,
-      videoFile: basename(timeline.metadata.videoFile),
-    },
+    metadata: meta,
     events: timeline.events.map(e => {
       if (e.type === 'narration' && e.audioFile) {
         return { ...e, audioFile: basename(e.audioFile) };

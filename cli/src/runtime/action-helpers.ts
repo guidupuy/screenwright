@@ -22,6 +22,8 @@ export type Pacing = 'fast' | 'normal' | 'cinematic';
 export interface HelpersOptions {
   pacingMultiplier?: number;
   narrationOverlap?: number;
+  onFrame?: () => Promise<void>;
+  virtualTime?: boolean;
 }
 
 const NARRATION_WPM = 150;
@@ -30,18 +32,19 @@ const PAGE_LOAD_WAIT_MS = 600;
 const CHAR_TYPE_DELAY_MS = 30;
 const CURSOR_MOVE_MIN_MS = 200;
 const CURSOR_MOVE_MAX_MS = 800;
+const SETTLE_MS = 150;
 
 const NARRATION_OVERLAP: Record<Pacing, number> = {
-  fast: 0.4,
-  normal: 0.6,
+  fast: 0.15,
+  normal: 0.5,
   cinematic: 0.85,
 };
 
 export function getPacingMultiplier(pacing: Pacing): number {
   switch (pacing) {
-    case 'fast': return 0.5;
-    case 'normal': return 1.0;
-    case 'cinematic': return 1.5;
+    case 'fast': return 0.15;
+    case 'normal': return 0.5;
+    case 'cinematic': return 1.0;
   }
 }
 
@@ -63,6 +66,8 @@ export function calculateMoveDuration(fromX: number, fromY: number, toX: number,
 export function createHelpers(page: Page, collector: TimelineCollector, opts?: HelpersOptions): ScreenwrightHelpers {
   const pm = opts?.pacingMultiplier ?? 1.0;
   const narrationOverlap = opts?.narrationOverlap ?? 0.6;
+  const onFrame = opts?.onFrame;
+  const virtual = opts?.virtualTime ?? false;
 
   let lastX = 640;
   let lastY = 360;
@@ -71,12 +76,22 @@ export function createHelpers(page: Page, collector: TimelineCollector, opts?: H
     return Math.round(ms * pm);
   }
 
+  async function timedWait(ms: number, settle?: number): Promise<void> {
+    if (virtual) {
+      collector.advance(ms);
+      const settleMs = settle ?? SETTLE_MS;
+      if (settleMs > 0) await page.waitForTimeout(settleMs);
+    } else {
+      await page.waitForTimeout(ms);
+    }
+  }
+
   async function emitNarration(text: string): Promise<void> {
     const estimatedMs = estimateNarrationMs(text);
     const actualWaitMs = Math.round(estimatedMs * narrationOverlap * pm);
     collector.emit({ type: 'narration', text });
     collector.emit({ type: 'wait', durationMs: actualWaitMs, reason: 'narration_sync' as const });
-    await page.waitForTimeout(actualWaitMs);
+    await timedWait(actualWaitMs, 0);
   }
 
   async function moveCursorTo(toX: number, toY: number): Promise<void> {
@@ -88,7 +103,7 @@ export function createHelpers(page: Page, collector: TimelineCollector, opts?: H
       moveDurationMs,
       easing: 'bezier' as const,
     });
-    await page.waitForTimeout(moveDurationMs);
+    await timedWait(moveDurationMs, 0);
     lastX = toX;
     lastY = toY;
   }
@@ -119,9 +134,10 @@ export function createHelpers(page: Page, collector: TimelineCollector, opts?: H
         boundingBox: null,
       });
       await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await onFrame?.();
       const waitMs = scaled(PAGE_LOAD_WAIT_MS);
       collector.emit({ type: 'wait', durationMs: waitMs, reason: 'page_load' as const });
-      await page.waitForTimeout(waitMs);
+      await timedWait(waitMs);
     },
 
     async click(selector, actionOpts) {
@@ -140,7 +156,8 @@ export function createHelpers(page: Page, collector: TimelineCollector, opts?: H
         boundingBox: box ? { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) } : null,
       });
       await locator.click();
-      await page.waitForTimeout(scaled(POST_ACTION_DELAY_MS));
+      await onFrame?.();
+      await timedWait(scaled(POST_ACTION_DELAY_MS));
     },
 
     async fill(selector, value, actionOpts) {
@@ -166,7 +183,8 @@ export function createHelpers(page: Page, collector: TimelineCollector, opts?: H
       for (const char of value) {
         await page.keyboard.type(char, { delay: charDelay });
       }
-      await page.waitForTimeout(scaled(POST_ACTION_DELAY_MS));
+      await onFrame?.();
+      await timedWait(scaled(POST_ACTION_DELAY_MS));
     },
 
     async hover(selector, actionOpts) {
@@ -185,7 +203,8 @@ export function createHelpers(page: Page, collector: TimelineCollector, opts?: H
         boundingBox: box ? { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) } : null,
       });
       await locator.hover();
-      await page.waitForTimeout(scaled(POST_ACTION_DELAY_MS));
+      await onFrame?.();
+      await timedWait(scaled(POST_ACTION_DELAY_MS));
     },
 
     async press(key, actionOpts) {
@@ -199,12 +218,14 @@ export function createHelpers(page: Page, collector: TimelineCollector, opts?: H
         boundingBox: null,
       });
       await page.keyboard.press(key);
-      await page.waitForTimeout(scaled(POST_ACTION_DELAY_MS));
+      await onFrame?.();
+      await timedWait(scaled(POST_ACTION_DELAY_MS));
     },
 
     async wait(ms) {
       collector.emit({ type: 'wait', durationMs: ms, reason: 'pacing' as const });
-      await page.waitForTimeout(ms);
+      await onFrame?.();
+      await timedWait(ms, 0);
     },
 
     async narrate(text) {

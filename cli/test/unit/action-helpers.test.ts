@@ -22,16 +22,16 @@ function mockPage() {
 }
 
 describe('getPacingMultiplier', () => {
-  it('returns 0.5 for fast', () => {
-    expect(getPacingMultiplier('fast')).toBe(0.5);
+  it('returns 0.15 for fast', () => {
+    expect(getPacingMultiplier('fast')).toBe(0.15);
   });
 
-  it('returns 1.0 for normal', () => {
-    expect(getPacingMultiplier('normal')).toBe(1.0);
+  it('returns 0.5 for normal', () => {
+    expect(getPacingMultiplier('normal')).toBe(0.5);
   });
 
-  it('returns 1.5 for cinematic', () => {
-    expect(getPacingMultiplier('cinematic')).toBe(1.5);
+  it('returns 1.0 for cinematic', () => {
+    expect(getPacingMultiplier('cinematic')).toBe(1.0);
   });
 });
 
@@ -51,11 +51,11 @@ describe('calculateMoveDuration', () => {
   });
 
   it('applies pacing multiplier', () => {
-    const normal = calculateMoveDuration(0, 0, 200, 200);
-    const fast = calculateMoveDuration(0, 0, 200, 200, 0.5);
-    const cinematic = calculateMoveDuration(0, 0, 200, 200, 1.5);
-    expect(fast).toBeLessThan(normal);
-    expect(cinematic).toBeGreaterThan(normal);
+    const base = calculateMoveDuration(0, 0, 200, 200);
+    const fast = calculateMoveDuration(0, 0, 200, 200, 0.15);
+    const slow = calculateMoveDuration(0, 0, 200, 200, 2.0);
+    expect(fast).toBeLessThan(base);
+    expect(slow).toBeGreaterThan(base);
   });
 });
 
@@ -185,13 +185,13 @@ describe('createHelpers', () => {
     const page = mockPage();
     const collector = new TimelineCollector();
     collector.start();
-    const sw = createHelpers(page, collector, { pacingMultiplier: 0.5 });
+    const sw = createHelpers(page, collector, { pacingMultiplier: 0.15 });
 
     await sw.click('.btn');
 
-    // Post-action delay: Math.round(300 * 0.5) = 150
+    // Post-action delay: Math.round(300 * 0.15) = 45
     const lastCall = page.waitForTimeout.mock.calls.at(-1);
-    expect(lastCall![0]).toBe(150);
+    expect(lastCall![0]).toBe(45);
   });
 
   it('narration overlap reduces wait duration', async () => {
@@ -209,5 +209,54 @@ describe('createHelpers', () => {
     // 8 words → (8/150) * 60 * 1000 = 3200ms estimated
     // actualWait = Math.round(3200 * 0.4 * 1.0) = 1280
     expect(waitEvent.durationMs).toBe(1280);
+  });
+
+  it('onFrame is called for click, fill, hover, press, navigate, wait', async () => {
+    const page = mockPage();
+    const collector = new TimelineCollector();
+    collector.start();
+    const onFrame = vi.fn().mockResolvedValue(undefined);
+    const sw = createHelpers(page, collector, { onFrame });
+
+    await sw.click('.btn');
+    expect(onFrame).toHaveBeenCalledTimes(1);
+
+    onFrame.mockClear();
+    await sw.fill('.input', 'abc');
+    expect(onFrame).toHaveBeenCalledTimes(1);
+
+    onFrame.mockClear();
+    await sw.hover('.link');
+    expect(onFrame).toHaveBeenCalledTimes(1);
+
+    onFrame.mockClear();
+    await sw.press('Enter');
+    expect(onFrame).toHaveBeenCalledTimes(1);
+
+    onFrame.mockClear();
+    await sw.navigate('http://localhost:3000');
+    expect(onFrame).toHaveBeenCalledTimes(1);
+
+    onFrame.mockClear();
+    await sw.wait(1000);
+    expect(onFrame).toHaveBeenCalledTimes(1);
+  });
+
+  it('virtualTime uses collector.advance instead of real waits', async () => {
+    const page = mockPage();
+    const collector = new TimelineCollector();
+    collector.start();
+    collector.enableVirtualTime();
+    const sw = createHelpers(page, collector, { virtualTime: true });
+
+    await sw.wait(5000);
+    // Virtual time should have advanced
+    expect(collector.elapsed()).toBe(5000);
+    // In virtual mode, page.waitForTimeout is NOT called with 5000
+    // (it may be called with settle=0, which skips)
+    const calls = page.waitForTimeout.mock.calls;
+    for (const call of calls) {
+      expect(call[0]).not.toBe(5000);
+    }
   });
 });

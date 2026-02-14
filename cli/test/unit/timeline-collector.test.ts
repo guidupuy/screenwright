@@ -79,4 +79,32 @@ describe('TimelineCollector', () => {
       expect(events[i].timestampMs).toBeGreaterThanOrEqual(events[i - 1].timestampMs);
     }
   });
+
+  describe('virtual time', () => {
+    it('advance() sets elapsed time', () => {
+      const c = new TimelineCollector();
+      c.start();
+      c.enableVirtualTime();
+      c.advance(500);
+      expect(c.elapsed()).toBe(500);
+    });
+
+    it('multiple advances accumulate', () => {
+      const c = new TimelineCollector();
+      c.start();
+      c.enableVirtualTime();
+      c.advance(200);
+      c.advance(300);
+      c.advance(100);
+      expect(c.elapsed()).toBe(600);
+    });
+
+    it('advance() is no-op in real mode', () => {
+      const c = new TimelineCollector();
+      c.start();
+      c.advance(99999);
+      // elapsed() should return wall-clock time, not 99999
+      expect(c.elapsed()).toBeLessThan(100);
+    });
+  });
 });

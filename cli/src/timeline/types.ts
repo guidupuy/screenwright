@@ -1,3 +1,8 @@
+export interface FrameEntry {
+  timestampMs: number;
+  file: string;
+}
+
 export interface Timeline {
   version: 1;
   metadata: TimelineMetadata;
@@ -10,7 +15,8 @@ export interface TimelineMetadata {
   recordedAt: string;
   viewport: { width: number; height: number };
   videoDurationMs: number;
-  videoFile: string;
+  videoFile?: string;
+  frameManifest?: FrameEntry[];
 }
 
 export type TimelineEvent =

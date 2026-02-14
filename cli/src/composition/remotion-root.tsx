@@ -28,7 +28,7 @@ export const RemotionRoot: React.FC = () => {
               recordedAt: new Date().toISOString(),
               viewport: { width: 1280, height: 720 },
               videoDurationMs: 0,
-              videoFile: '',
+              videoFile: 'placeholder.webm',
             },
             events: [],
           },

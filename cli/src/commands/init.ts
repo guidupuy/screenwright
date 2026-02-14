@@ -151,9 +151,9 @@ export const initCommand = new Command('init')
       const pacing = await select({
         message: 'Pacing',
         choices: [
-          { value: 'fast' as const, description: '0.5x delays — snappy, action-packed' },
-          { value: 'normal' as const, description: '1.0x delays — balanced default' },
-          { value: 'cinematic' as const, description: '1.5x delays — slow, dramatic' },
+          { value: 'fast' as const, description: 'Near-zero pauses — maximum speed' },
+          { value: 'normal' as const, description: 'Snappy with brief pauses' },
+          { value: 'cinematic' as const, description: 'Full natural pacing' },
         ],
         default: 'normal',
       });

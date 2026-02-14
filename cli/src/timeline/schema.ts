@@ -61,6 +61,11 @@ const timelineEventSchema = z.discriminatedUnion('type', [
   waitEventSchema,
 ]);
 
+const frameEntrySchema = z.object({
+  timestampMs: z.number().nonnegative(),
+  file: z.string(),
+});
+
 export const timelineSchema = z.object({
   version: z.literal(1),
   metadata: z.object({
@@ -72,8 +77,12 @@ export const timelineSchema = z.object({
       height: z.number().int().positive(),
     }),
     videoDurationMs: z.number().nonnegative(),
-    videoFile: z.string(),
-  }),
+    videoFile: z.string().optional(),
+    frameManifest: z.array(frameEntrySchema).optional(),
+  }).refine(
+    m => (m.videoFile && m.videoFile.length > 0) || (m.frameManifest && m.frameManifest.length > 0),
+    { message: 'metadata must have either videoFile or a non-empty frameManifest' },
+  ),
   events: z.array(timelineEventSchema),
 });
 

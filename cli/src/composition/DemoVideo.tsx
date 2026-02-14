@@ -1,10 +1,11 @@
 import React from 'react';
-import { OffthreadVideo, staticFile } from 'remotion';
+import { Img, OffthreadVideo, staticFile, useCurrentFrame } from 'remotion';
 import type { CursorTargetEvent, ActionEvent, NarrationEvent } from '../timeline/types.js';
 import type { ValidatedTimeline } from '../timeline/schema.js';
 import { CursorOverlay } from './CursorOverlay.js';
 import { NarrationTrack } from './NarrationTrack.js';
 import { precomputeCursorPaths } from './cursor-path.js';
+import { findClosestFrame } from './frame-lookup.js';
 
 interface Props {
   timeline: ValidatedTimeline;
@@ -12,6 +13,8 @@ interface Props {
 
 export const DemoVideo: React.FC<Props> = ({ timeline }) => {
   const fps = 30;
+  const frame = useCurrentFrame();
+  const timeMs = (frame / fps) * 1000;
 
   const cursorEvents = precomputeCursorPaths(
     timeline.events.filter((e): e is CursorTargetEvent => e.type === 'cursor_target')
@@ -25,6 +28,18 @@ export const DemoVideo: React.FC<Props> = ({ timeline }) => {
     (e): e is NarrationEvent => e.type === 'narration'
   );
 
+  const { frameManifest, videoFile } = timeline.metadata;
+
+  let baseLayer: React.ReactNode;
+  if (frameManifest && frameManifest.length > 0) {
+    const entry = findClosestFrame(frameManifest, timeMs);
+    baseLayer = <Img src={staticFile(entry.file)} />;
+  } else if (videoFile) {
+    baseLayer = <OffthreadVideo src={staticFile(videoFile)} />;
+  } else {
+    throw new Error('Timeline must have either frameManifest or videoFile');
+  }
+
   return (
     <div
       style={{
@@ -34,8 +49,8 @@ export const DemoVideo: React.FC<Props> = ({ timeline }) => {
         overflow: 'hidden',
       }}
     >
-      {/* Layer 1: Base video from Playwright */}
-      <OffthreadVideo src={staticFile(timeline.metadata.videoFile)} />
+      {/* Layer 1: Base from screenshots or video */}
+      {baseLayer}
 
       {/* Layer 2: Cursor overlay */}
       <CursorOverlay cursorEvents={cursorEvents} clickEvents={clickEvents} fps={fps} />

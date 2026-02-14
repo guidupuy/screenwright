@@ -20,6 +20,7 @@ export const configSchema = z.object({
   ttsProvider: z.enum(['piper', 'openai']).default('piper'),
   openaiVoice: z.enum(openaiVoices).default('nova'),
   pacing: z.enum(['fast', 'normal', 'cinematic']).default('normal'),
+  captureMode: z.enum(['frames', 'video']).default('frames'),
 });
 
 export type ScreenwrightConfig = z.infer<typeof configSchema>;

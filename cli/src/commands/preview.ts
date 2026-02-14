@@ -49,12 +49,18 @@ export const previewCommand = new Command('preview')
     // 2. Run scenario
     spinner = ora('Recording preview').start();
     try {
-      const { videoFile, timeline } = await runScenario(scenarioFn, {
+      const result = await runScenario(scenarioFn, {
         scenarioFile: scenarioPath,
         testFile: scenarioPath,
+        captureMode: 'video',
       });
+      const { timeline } = result;
 
-      await copyFile(videoFile, outputPath);
+      if (!result.videoFile) {
+        spinner.fail('No video file produced');
+        process.exit(1);
+      }
+      await copyFile(result.videoFile, outputPath);
       spinner.succeed(`Preview saved to: ${outputPath}`);
       console.log(chalk.dim(`  ${timeline.events.length} events recorded`));
     } catch (err: any) {

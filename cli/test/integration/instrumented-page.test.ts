@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { stat, rm, readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { stat, rm, readFile, readdir } from 'node:fs/promises';
+import { resolve, join } from 'node:path';
 import { runScenario, type ScenarioFn } from '../../src/runtime/instrumented-page.js';
 import { timelineSchema } from '../../src/timeline/schema.js';
 
@@ -29,6 +29,7 @@ describe('runScenario — real Playwright', () => {
       scenarioFile: 'test-scenario.ts',
       testFile: 'test.spec.ts',
       viewport: { width: 1280, height: 720 },
+      captureMode: 'video',
     });
 
     tempDirs.push(result.tempDir);
@@ -75,7 +76,7 @@ describe('runScenario — real Playwright', () => {
 
     // --- Video file ---
     expect(result.videoFile).toBeTruthy();
-    const videoStat = await stat(result.videoFile);
+    const videoStat = await stat(result.videoFile!);
     expect(videoStat.size).toBeGreaterThan(0);
     expect(result.videoFile).toMatch(/\.webm$/);
 
@@ -94,6 +95,7 @@ describe('runScenario — real Playwright', () => {
     const result = await runScenario(scenario, {
       scenarioFile: 'minimal.ts',
       testFile: 'minimal.spec.ts',
+      captureMode: 'video',
     });
 
     tempDirs.push(result.tempDir);
@@ -105,7 +107,7 @@ describe('runScenario — real Playwright', () => {
     expect(actions.length).toBe(1);
     expect((actions[0] as { action: string }).action).toBe('navigate');
 
-    const videoStat = await stat(result.videoFile);
+    const videoStat = await stat(result.videoFile!);
     expect(videoStat.size).toBeGreaterThan(0);
   }, 30_000);
 
@@ -164,5 +166,57 @@ describe('runScenario — real Playwright', () => {
     const nextEvent = result.timeline.events[narrationIdx + 1];
     expect(nextEvent.type).toBe('wait');
     expect((nextEvent as { reason: string }).reason).toBe('narration_sync');
+  }, 30_000);
+
+  it('frame capture mode produces JPEG screenshots and valid timeline', async () => {
+    const scenario: ScenarioFn = async (sw) => {
+      await sw.scene('Frame capture test');
+      await sw.navigate(FIXTURE_PAGE);
+      await sw.click('[data-testid="product-laptop"]');
+      await sw.fill('[data-testid="email"]', 'hi@test.com');
+    };
+
+    const result = await runScenario(scenario, {
+      scenarioFile: 'frames.ts',
+      testFile: 'frames.spec.ts',
+      viewport: { width: 1280, height: 720 },
+      captureMode: 'frames',
+    });
+
+    tempDirs.push(result.tempDir);
+
+    // Timeline is valid
+    const parsed = timelineSchema.safeParse(result.timeline);
+    expect(parsed.success).toBe(true);
+
+    // No videoFile in frame mode
+    expect(result.videoFile).toBeUndefined();
+
+    // frameManifest is populated
+    const manifest = result.timeline.metadata.frameManifest;
+    expect(manifest).toBeDefined();
+    expect(manifest!.length).toBeGreaterThan(0);
+
+    // Each frame file exists on disk
+    for (const entry of manifest!) {
+      const frameStat = await stat(join(result.tempDir, entry.file));
+      expect(frameStat.size).toBeGreaterThan(0);
+    }
+
+    // Frame files are JPEGs
+    expect(manifest![0].file).toMatch(/\.jpg$/);
+
+    // Timestamps are monotonically non-decreasing
+    for (let i = 1; i < manifest!.length; i++) {
+      expect(manifest![i].timestampMs).toBeGreaterThanOrEqual(manifest![i - 1].timestampMs);
+    }
+
+    // Frames directory exists and has the right count
+    const framesDir = join(result.tempDir, 'frames');
+    const files = await readdir(framesDir);
+    expect(files.length).toBe(manifest!.length);
+
+    // Virtual time: videoDurationMs should reflect intended pacing, not wall clock
+    expect(result.timeline.metadata.videoDurationMs).toBeGreaterThan(0);
   }, 30_000);
 });

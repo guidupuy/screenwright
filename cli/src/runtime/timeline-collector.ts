@@ -7,13 +7,26 @@ export class TimelineCollector {
   private events: TimelineEvent[] = [];
   private counter = 0;
   private startTime: number | null = null;
+  private virtualMode = false;
+  private virtualTime = 0;
 
   start(): void {
     this.startTime = performance.now();
   }
 
-  private elapsed(): number {
+  enableVirtualTime(): void {
+    this.virtualMode = true;
+    this.virtualTime = 0;
+  }
+
+  advance(ms: number): void {
+    if (!this.virtualMode) return;
+    this.virtualTime += ms;
+  }
+
+  elapsed(): number {
     if (this.startTime === null) throw new Error('TimelineCollector not started');
+    if (this.virtualMode) return Math.round(this.virtualTime);
     return Math.round(performance.now() - this.startTime);
   }
 

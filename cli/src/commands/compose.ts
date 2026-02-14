@@ -18,6 +18,7 @@ export const composeCommand = new Command('compose')
   .option('--no-voiceover', 'Disable voiceover')
   .option('--no-cursor', 'Disable cursor overlay')
   .option('--pacing <mode>', 'Pacing mode: fast, normal, cinematic', 'normal')
+  .option('--capture <mode>', 'Capture mode: frames, video', 'frames')
   .option('--keep-temp', 'Keep temporary files')
   .action(async (scenario: string, opts) => {
     const config = await loadConfig();
@@ -32,6 +33,12 @@ export const composeCommand = new Command('compose')
     const pacing = opts.pacing ?? config.pacing ?? 'normal';
     if (!['fast', 'normal', 'cinematic'].includes(pacing)) {
       console.error(chalk.red(`Invalid pacing mode: ${pacing}. Use fast, normal, or cinematic.`));
+      process.exit(1);
+    }
+
+    const captureMode = opts.capture ?? config.captureMode ?? 'frames';
+    if (!['frames', 'video'].includes(captureMode)) {
+      console.error(chalk.red(`Invalid capture mode: ${captureMode}. Use frames or video.`));
       process.exit(1);
     }
 
@@ -74,7 +81,7 @@ export const composeCommand = new Command('compose')
     }
 
     // 2. Run scenario in Playwright
-    spinner = ora('Recording scenario in Playwright').start();
+    spinner = ora(`Recording scenario (${captureMode} mode)`).start();
     let timeline, tempDir: string;
     try {
       const result = await runScenario(scenarioFn, {
@@ -82,6 +89,7 @@ export const composeCommand = new Command('compose')
         testFile: scenarioPath,
         viewport: { width, height },
         pacing: pacing as 'fast' | 'normal' | 'cinematic',
+        captureMode: captureMode as 'frames' | 'video',
       });
       timeline = result.timeline;
       tempDir = result.tempDir;
