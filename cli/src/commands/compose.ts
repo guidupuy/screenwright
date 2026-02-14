@@ -17,7 +17,6 @@ export const composeCommand = new Command('compose')
   .option('--resolution <res>', 'Video resolution', '1280x720')
   .option('--no-voiceover', 'Disable voiceover')
   .option('--no-cursor', 'Disable cursor overlay')
-  .option('--capture <mode>', 'Capture mode: frames, video')
   .option('--keep-temp', 'Keep temporary files')
   .action(async (scenario: string, opts) => {
     const config = await loadConfig();
@@ -26,12 +25,6 @@ export const composeCommand = new Command('compose')
 
     if (!width || !height) {
       console.error(chalk.red('Invalid resolution format. Use WIDTHxHEIGHT (e.g., 1280x720)'));
-      process.exit(1);
-    }
-
-    const captureMode = opts.capture ?? config.captureMode ?? 'frames';
-    if (!['frames', 'video'].includes(captureMode)) {
-      console.error(chalk.red(`Invalid capture mode: ${captureMode}. Use frames or video.`));
       process.exit(1);
     }
 
@@ -74,14 +67,13 @@ export const composeCommand = new Command('compose')
     }
 
     // 2. Run scenario in Playwright
-    spinner = ora(`Recording scenario (${captureMode} mode)`).start();
+    spinner = ora('Recording scenario').start();
     let timeline, tempDir: string;
     try {
       const result = await runScenario(scenarioFn, {
         scenarioFile: scenarioPath,
         testFile: scenarioPath,
         viewport: { width, height },
-        captureMode: captureMode as 'frames' | 'video',
       });
       timeline = result.timeline;
       tempDir = result.tempDir;

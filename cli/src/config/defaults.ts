@@ -10,7 +10,6 @@ export const defaultConfig: ScreenwrightConfig = {
   ttsProvider: 'piper',
   openaiVoice: 'nova',
   openaiTtsInstructions: DEFAULT_TTS_INSTRUCTIONS,
-  captureMode: 'frames',
 };
 
 export function serializeConfig(config: ScreenwrightConfig): string {

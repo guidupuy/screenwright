@@ -93,7 +93,7 @@ export async function runScenario(scenario: ScenarioFn, opts: RunOptions): Promi
   if (cdpSession) {
     await cdpSession.send('Page.startScreencast', {
       format: 'jpeg',
-      quality: 90,
+      quality: 95,
       maxWidth: viewport.width,
       maxHeight: viewport.height,
       everyNthFrame: 1,

@@ -24,7 +24,6 @@ export const configSchema = z.object({
   ttsProvider: z.enum(['piper', 'openai']).default('piper'),
   openaiVoice: z.enum(openaiVoices).default('nova'),
   openaiTtsInstructions: z.string().default(DEFAULT_TTS_INSTRUCTIONS),
-  captureMode: z.enum(['frames', 'video']).default('frames'),
 });
 
 export type ScreenwrightConfig = z.infer<typeof configSchema>;

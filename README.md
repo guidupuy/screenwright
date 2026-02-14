@@ -113,14 +113,13 @@ screenwright generate --validate <path>
 Record scenario and compose final MP4 with cursor overlay and voiceover.
 
 ```bash
-screenwright compose <scenario> [--out <path>] [--resolution WxH] [--capture frames|video]
+screenwright compose <scenario> [--out <path>] [--resolution WxH]
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--out` | `./output/<name>.mp4` | Output path |
 | `--resolution` | `1280x720` | Video resolution |
-| `--capture` | `frames` | Capture mode: `frames` or `video` |
 | `--no-voiceover` | false | Skip voiceover audio |
 | `--no-cursor` | false | Skip cursor overlay |
 | `--keep-temp` | false | Keep intermediate files |
@@ -180,7 +179,6 @@ const config = {
 
   // Video
   resolution: { width: 1280, height: 720 },
-  captureMode: "frames",             // "frames" or "video"
   outputDir: "./output",
 
   // Browser

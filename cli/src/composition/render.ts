@@ -53,6 +53,8 @@ export async function renderDemoVideo(opts: RenderOptions): Promise<string> {
     composition,
     serveUrl: bundlePath,
     codec: 'h264',
+    crf: 16,
+    pixelFormat: 'yuv420p',
     outputLocation: opts.outputPath,
     inputProps: { timeline: staticTimeline },
   });
