@@ -7,26 +7,27 @@ interface Point {
 
 /**
  * Generate bezier control points for natural cursor movement.
- * Produces a slightly curved path with randomized control points
- * to avoid perfectly straight lines.
+ * Produces a clean single arc — fully deterministic (no Math.random).
  */
 function bezierControlPoints(from: Point, to: Point): [Point, Point] {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
-
-  // Perpendicular offset for curve (5-15% of distance)
   const dist = Math.sqrt(dx * dx + dy * dy);
-  const offset = dist * (0.05 + Math.random() * 0.1);
 
-  // Normal vector
+  // Fixed 10% perpendicular offset, capped at 50px
+  const offset = Math.min(dist * 0.1, 50);
+
+  // Normal vector (perpendicular to movement direction)
   const nx = -dy / (dist || 1);
   const ny = dx / (dist || 1);
 
-  // Place control points at 1/3 and 2/3 along the path with perpendicular offset
-  const sign = Math.random() > 0.5 ? 1 : -1;
+  // Deterministic arc direction based on horizontal movement
+  const sign = dx >= 0 ? 1 : -1;
+
+  // CP1 at 1/3, CP2 at 2/3 — both offset to same side for a clean single arc
   return [
-    { x: from.x + dx * 0.33 + nx * offset * sign, y: from.y + dy * 0.33 + ny * offset * sign },
-    { x: from.x + dx * 0.66 - nx * offset * sign * 0.5, y: from.y + dy * 0.66 - ny * offset * sign * 0.5 },
+    { x: from.x + dx / 3 + nx * offset * sign, y: from.y + dy / 3 + ny * offset * sign },
+    { x: from.x + dx * 2 / 3 + nx * offset * sign, y: from.y + dy * 2 / 3 + ny * offset * sign },
   ];
 }
 

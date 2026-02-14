@@ -8,6 +8,7 @@ import { runScenario, type ScenarioFn } from '../runtime/instrumented-page.js';
 import { generateNarration } from '../voiceover/narration-timing.js';
 import { ensureDependencies } from '../voiceover/voice-models.js';
 import { renderDemoVideo } from '../composition/render.js';
+import { loadConfig } from '../config/load-config.js';
 
 export const composeCommand = new Command('compose')
   .description('Record and compose final demo video')
@@ -18,6 +19,7 @@ export const composeCommand = new Command('compose')
   .option('--no-cursor', 'Disable cursor overlay')
   .option('--keep-temp', 'Keep temporary files')
   .action(async (scenario: string, opts) => {
+    const config = await loadConfig();
     const scenarioPath = resolve(scenario);
     const [width, height] = opts.resolution.split('x').map(Number);
 
@@ -98,12 +100,23 @@ export const composeCommand = new Command('compose')
     if (opts.voiceover !== false) {
       const narrationCount = timeline.events.filter(e => e.type === 'narration').length;
       if (narrationCount > 0) {
-        spinner = ora(`Generating voiceover (${narrationCount} segments)`).start();
+        // Validate API key before starting TTS loop
+        if (config.ttsProvider === 'openai' && !process.env.OPENAI_API_KEY) {
+          console.error(chalk.red('OPENAI_API_KEY is required when ttsProvider is "openai".'));
+          console.error(chalk.dim('Set it with: export OPENAI_API_KEY=sk-...'));
+          process.exit(1);
+        }
+
+        spinner = ora(`Generating voiceover (${narrationCount} segments via ${config.ttsProvider})`).start();
         try {
-          const { modelPath } = await ensureDependencies();
+          const modelPath = config.ttsProvider === 'piper'
+            ? (await ensureDependencies(config.voice)).modelPath
+            : undefined;
           finalTimeline = await generateNarration(timeline, {
             tempDir,
             modelPath,
+            ttsProvider: config.ttsProvider,
+            openaiVoice: config.openaiVoice,
           });
           spinner.succeed(`Generated ${narrationCount} voiceover segments`);
         } catch (err: any) {

@@ -110,6 +110,8 @@ export async function installSkills(opts?: InstallSkillsOptions): Promise<void> 
 export const initCommand = new Command('init')
   .description('Bootstrap config and download voice model')
   .option('--voice <model>', 'Voice model to use', 'en_US-amy-medium')
+  .option('--tts <provider>', 'TTS provider: piper or openai', 'piper')
+  .option('--openai-voice <voice>', 'OpenAI voice name', 'nova')
   .option('--skip-voice-download', 'Skip downloading the voice model')
   .option('--skip-skill-install', 'Skip coding assistant skill installation')
   .action(async (opts) => {
@@ -127,13 +129,18 @@ export const initCommand = new Command('init')
     if (configExists) {
       console.log(chalk.dim('screenwright.config.ts already exists, skipping.'));
     } else {
-      const config = { ...defaultConfig, voice: opts.voice };
+      const config = {
+        ...defaultConfig,
+        voice: opts.voice,
+        ttsProvider: opts.tts,
+        openaiVoice: opts.openaiVoice,
+      };
       await writeFile(configPath, serializeConfig(config), 'utf-8');
       console.log(chalk.green('Created screenwright.config.ts'));
     }
 
-    // Voice model
-    if (!opts.skipVoiceDownload) {
+    // Voice model (skip for OpenAI)
+    if (!opts.skipVoiceDownload && opts.tts !== 'openai') {
       const spinner = ora('Downloading Piper TTS and voice model').start();
       try {
         await ensureDependencies(opts.voice);
@@ -144,6 +151,12 @@ export const initCommand = new Command('init')
         console.error(chalk.dim('Voiceover will be unavailable. Re-run "screenwright init" to retry.'));
         console.error(chalk.dim('Use --no-voiceover with compose to skip voiceover.'));
       }
+    }
+
+    // Validate OpenAI API key
+    if (opts.tts === 'openai' && !process.env.OPENAI_API_KEY) {
+      console.warn(chalk.yellow('Warning: OPENAI_API_KEY not set. OpenAI TTS will fail at compose time.'));
+      console.log(chalk.dim('Set it with: export OPENAI_API_KEY=sk-...'));
     }
 
     // Coding assistant skills

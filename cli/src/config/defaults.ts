@@ -7,6 +7,8 @@ export const defaultConfig: ScreenwrightConfig = {
   locale: 'en-US',
   colorScheme: 'light',
   timezoneId: 'America/New_York',
+  ttsProvider: 'piper',
+  openaiVoice: 'nova',
 };
 
 export function serializeConfig(config: ScreenwrightConfig): string {

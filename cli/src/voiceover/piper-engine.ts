@@ -6,7 +6,7 @@ import { getVoiceModelPath, downloadPiper } from './voice-models.js';
 const execFileAsync = promisify(execFile);
 
 export interface SynthesizeResult {
-  wavPath: string;
+  audioPath: string;
   durationMs: number;
 }
 
@@ -35,7 +35,7 @@ export async function synthesize(
       }
 
       const durationMs = await measureDuration(outputPath);
-      resolve({ wavPath: outputPath, durationMs });
+      resolve({ audioPath: outputPath, durationMs });
     });
 
     proc.stdin.write(text);

@@ -40,6 +40,13 @@ export async function runScenario(scenario: ScenarioFn, opts: RunOptions): Promi
     recordVideo: { dir: tempDir, size: viewport },
   });
 
+  // Hide the native cursor so only the Screenwright overlay cursor appears
+  await context.addInitScript(`
+    const s = document.createElement('style');
+    s.textContent = '*, *::before, *::after { cursor: none !important; }';
+    (document.head || document.documentElement).appendChild(s);
+  `);
+
   const page = await context.newPage();
   const collector = new TimelineCollector();
 

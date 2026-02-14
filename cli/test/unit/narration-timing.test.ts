@@ -1,11 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Timeline } from '../../src/timeline/types.js';
 
-// Mock piper-engine before importing narration-timing
+// Mock both engines before importing narration-timing
 vi.mock('../../src/voiceover/piper-engine.js', () => ({
   synthesize: vi.fn().mockImplementation(async (text: string, outputPath: string) => ({
-    wavPath: outputPath,
+    audioPath: outputPath,
     durationMs: text.split(/\s+/).length * 400, // ~150 WPM estimate
+  })),
+}));
+
+vi.mock('../../src/voiceover/openai-engine.js', () => ({
+  synthesize: vi.fn().mockImplementation(async (text: string, outputPath: string) => ({
+    audioPath: outputPath,
+    durationMs: text.split(/\s+/).length * 350,
   })),
 }));
 
@@ -76,5 +83,23 @@ describe('generateNarration', () => {
     const result = await generateNarration(timeline, { tempDir: '/tmp' });
     const files = result.events.map(e => (e as any).audioFile);
     expect(files[0]).not.toBe(files[1]);
+  });
+
+  it('uses .wav extension for piper provider', async () => {
+    const timeline = makeTimeline([
+      { type: 'narration', id: 'ev-001', timestampMs: 0, text: 'Hello' },
+    ]);
+
+    const result = await generateNarration(timeline, { tempDir: '/tmp', ttsProvider: 'piper' });
+    expect((result.events[0] as any).audioFile).toMatch(/\.wav$/);
+  });
+
+  it('uses .mp3 extension for openai provider', async () => {
+    const timeline = makeTimeline([
+      { type: 'narration', id: 'ev-001', timestampMs: 0, text: 'Hello' },
+    ]);
+
+    const result = await generateNarration(timeline, { tempDir: '/tmp', ttsProvider: 'openai' });
+    expect((result.events[0] as any).audioFile).toMatch(/\.mp3$/);
   });
 });

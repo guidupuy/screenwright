@@ -45,6 +45,23 @@ describe('computeWaypoints', () => {
     const waypoints = computeWaypoints({ x: 0, y: 0 }, { x: 100, y: 100 }, 10);
     expect(waypoints).toHaveLength(11); // 0..10 inclusive
   });
+
+  it('is deterministic — same input always produces same waypoints', () => {
+    const from = { x: 100, y: 200 };
+    const to = { x: 500, y: 400 };
+    const a = computeWaypoints(from, to);
+    const b = computeWaypoints(from, to);
+    expect(a).toEqual(b);
+  });
+
+  it('produces a clean arc (no S-curve)', () => {
+    const waypoints = computeWaypoints({ x: 0, y: 0 }, { x: 400, y: 0 }, 40);
+    // All mid-waypoint y-values should be on the same side of the line
+    const midYs = waypoints.slice(1, -1).map(w => w.y);
+    const allNonNeg = midYs.every(y => y >= -0.001);
+    const allNonPos = midYs.every(y => y <= 0.001);
+    expect(allNonNeg || allNonPos).toBe(true);
+  });
 });
 
 describe('precomputeCursorPaths', () => {
