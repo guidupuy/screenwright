@@ -1,6 +1,6 @@
 {
   "name": "screenwright",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "Turn Playwright E2E tests into polished product demo videos",
   "license": "MIT",
   "author": "Guillaume Dupuy",

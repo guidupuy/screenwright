@@ -46,6 +46,15 @@ export const configCommand = new Command('config')
       default: current.resolution,
     });
 
+    config.captureMode = await select({
+      message: 'Capture Mode',
+      choices: [
+        { value: 'frames' as const, description: 'JPEG screenshots with virtual time (recommended)' },
+        { value: 'video' as const, description: 'Real-time WebM recording' },
+      ],
+      default: current.captureMode,
+    });
+
     config.colorScheme = await select({
       message: 'Color Scheme',
       choices: [
