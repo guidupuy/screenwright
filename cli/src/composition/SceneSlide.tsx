@@ -6,7 +6,7 @@ import type { SlideAnimation } from '../timeline/types.js';
 declare const document: {
   createElement(tag: string): HTMLLinkElement;
   head: { appendChild(el: unknown): void; removeChild(el: unknown): void };
-  fonts: { ready: Promise<void>; check(font: string): boolean };
+  fonts: { ready: Promise<void> };
 };
 
 interface HTMLLinkElement {
@@ -226,12 +226,6 @@ export const SceneSlide: React.FC<Props> = ({
 
   useEffect(() => {
     if (!fontFamily || !handle) return;
-
-    // Skip network fetch if font is already available (system font or previously loaded)
-    if (document.fonts.check(`16px "${fontFamily}"`)) {
-      continueRender(handle);
-      return;
-    }
 
     const encoded = encodeURIComponent(fontFamily);
     const link = document.createElement('link');

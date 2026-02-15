@@ -79,6 +79,7 @@ export async function runScenario(scenario: ScenarioFn, opts: RunOptions): Promi
 
       if (capturing) return;
       capturing = true;
+      const capturedAt = collector.elapsed();
       pendingScreenshot = (async () => {
         try {
           frameCounter++;
@@ -86,7 +87,7 @@ export async function runScenario(scenario: ScenarioFn, opts: RunOptions): Promi
           const filePath = join(framesDir, filename);
           await page.screenshot({ path: filePath, type: 'jpeg', quality: 90 });
           frameManifest!.push({
-            timestampMs: collector.elapsed(),
+            timestampMs: capturedAt,
             file: `frames/${filename}`,
           });
         } catch {
