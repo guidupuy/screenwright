@@ -157,7 +157,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
 | Method | Description |
 |--------|-------------|
 | `sw.scene(title)` | Mark a scene boundary (no slide) |
-| `sw.scene(title, { slide?: { duration?, brandColor?, ... } })` | Scene with optional transition slide (pass `{ slide: {} }` for defaults) |
+| `sw.scene(title, { slide?: { duration?, brandColor?, animation?, ... } })` | Scene with optional transition slide (pass `{ slide: {} }` for defaults) |
 | `sw.navigate(url, { narration? })` | Navigate to URL |
 | `sw.click(selector, { narration? })` | Click an element |
 | `sw.fill(selector, value, { narration? })` | Type into an input (character by character) |
@@ -165,6 +165,36 @@ export default async function scenario(sw: ScreenwrightHelpers) {
 | `sw.press(key, { narration? })` | Press a keyboard key |
 | `sw.wait(ms)` | Pause for pacing |
 | `sw.narrate(text)` | Speak narration without an action |
+
+### Slide Animations
+
+Scene transition slides support multiple animation styles via the `animation` option:
+
+```typescript
+await sw.scene('Getting Started', { slide: { animation: 'cinematic' } });
+```
+
+| Animation | In | Out | Style |
+|-----------|-----|-----|-------|
+| `fade` (default) | Fade + spring scale from 85% + translateY | Fade + scale to 95% | Cross Dissolve |
+| `slide-up` | Translate from below viewport + fade | Translate down + fade | Slide |
+| `slide-left` | Translate from right + fade | Translate left + fade | Push |
+| `zoom` | Scale from 0.3 with spring + fade | Scale to 1.5 + fade | Zoom |
+| `cinematic` | Bg fades, title drops with spring, description slides up staggered | All fade out | Doorway |
+| `pop` | Bouncy overshoot spring + fade | Spring shrink + fade | Spin |
+| `wipe` | Clip-path wipe from right, content fades in | Reverse wipe | Wipe |
+
+Set a default animation for all slides in your config:
+
+```typescript
+branding: {
+  brandColor: "#4F46E5",
+  textColor: "#FFFFFF",
+  animation: "cinematic",  // default animation for all slides
+},
+```
+
+Per-slide `animation` overrides the branding default.
 
 ## Configuration
 
@@ -192,6 +222,7 @@ const config = {
     brandColor: "#4F46E5",       // Default slide background color (hex)
     textColor: "#FFFFFF",        // Default slide text color (hex)
     fontFamily: "Inter",         // Default Google Fonts family (optional)
+    animation: "fade",           // Default slide animation (optional)
   },
 };
 
