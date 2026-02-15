@@ -134,6 +134,22 @@ describe('createHelpers', () => {
     });
   });
 
+  it('scene() with animation in slide config emits correct config', async () => {
+    const page = mockPage();
+    const collector = new TimelineCollector();
+    collector.start();
+    const sw = createHelpers(page, collector);
+
+    await sw.scene('Intro', {
+      slide: { animation: 'zoom' },
+    });
+    const events = collector.getEvents();
+
+    expect(events).toHaveLength(1);
+    const ev = events[0] as any;
+    expect(ev.slide).toEqual({ animation: 'zoom' });
+  });
+
   it('click() emits cursor_target then action events', async () => {
     const page = mockPage();
     const collector = new TimelineCollector();

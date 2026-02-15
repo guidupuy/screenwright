@@ -70,7 +70,7 @@ The scenario must:
 - Use the `sw.*` API exclusively:
   - `sw.scene(title)` — scene marker only, no slide
   - `sw.scene(title, description?)` — scene marker with optional description, no slide
-  - `sw.scene(title, { description?, slide?: { duration?, brandColor?, textColor?, fontFamily?, titleFontSize? } })` — scene with optional transition slide (pass `{ slide: {} }` for defaults)
+  - `sw.scene(title, { description?, slide?: { duration?, brandColor?, textColor?, fontFamily?, titleFontSize?, animation? } })` — scene with optional transition slide (pass `{ slide: {} }` for defaults). animation: 'fade' (default) | 'slide-up' | 'slide-left' | 'zoom' | 'cinematic' | 'pop' | 'wipe'
   - `sw.navigate(url, { narration? })` — navigate to URL
   - `sw.click(selector, { narration? })` — click element
   - `sw.fill(selector, value, { narration? })` — type into input (character by character)

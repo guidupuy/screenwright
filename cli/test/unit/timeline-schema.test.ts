@@ -231,6 +231,51 @@ describe('timelineSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('accepts scene slide with valid animation value', () => {
+    const timeline = {
+      ...sampleTimeline,
+      events: [{
+        type: 'scene',
+        id: 'ev-001',
+        timestampMs: 0,
+        title: 'Intro',
+        slide: { animation: 'zoom' },
+      }],
+    };
+    const result = timelineSchema.safeParse(timeline);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects scene slide with invalid animation value', () => {
+    const bad = {
+      ...sampleTimeline,
+      events: [{
+        type: 'scene',
+        id: 'ev-001',
+        timestampMs: 0,
+        title: 'Bad',
+        slide: { animation: 'spiral' },
+      }],
+    };
+    const result = timelineSchema.safeParse(bad);
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts scene slide without animation (backward compat)', () => {
+    const timeline = {
+      ...sampleTimeline,
+      events: [{
+        type: 'scene',
+        id: 'ev-001',
+        timestampMs: 0,
+        title: 'Intro',
+        slide: { duration: 3000 },
+      }],
+    };
+    const result = timelineSchema.safeParse(timeline);
+    expect(result.success).toBe(true);
+  });
+
   it('accepts empty events array', () => {
     const timeline = { ...sampleTimeline, events: [] };
     const result = timelineSchema.safeParse(timeline);

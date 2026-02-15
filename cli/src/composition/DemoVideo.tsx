@@ -80,6 +80,7 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
         const textColor = seg.slideConfig.textColor ?? branding?.textColor ?? '#FFFFFF';
         const fontFamily = seg.slideConfig.fontFamily ?? branding?.fontFamily;
         const titleFontSize = seg.slideConfig.titleFontSize;
+        const animation = seg.slideConfig.animation ?? branding?.animation ?? 'fade';
 
         return (
           <Sequence
@@ -94,6 +95,7 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
               textColor={textColor}
               fontFamily={fontFamily}
               titleFontSize={titleFontSize}
+              animation={animation}
               durationInFrames={msToFrames(seg.slideDurationMs, fps)}
               fps={fps}
             />

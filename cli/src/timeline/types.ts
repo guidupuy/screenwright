@@ -26,12 +26,19 @@ export type TimelineEvent =
   | NarrationEvent
   | WaitEvent;
 
+export const slideAnimations = [
+  'fade', 'slide-up', 'slide-left', 'zoom', 'cinematic', 'pop', 'wipe',
+] as const;
+
+export type SlideAnimation = (typeof slideAnimations)[number];
+
 export interface SceneSlideConfig {
   duration?: number;
   brandColor?: string;
   textColor?: string;
   fontFamily?: string;
   titleFontSize?: number;
+  animation?: SlideAnimation;
 }
 
 export interface SceneEvent {

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { slideAnimations } from './types.js';
 
 const sceneSlideConfigSchema = z.object({
   duration: z.number().positive().optional(),
@@ -6,6 +7,7 @@ const sceneSlideConfigSchema = z.object({
   textColor: z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/).optional(),
   fontFamily: z.string().optional(),
   titleFontSize: z.number().positive().optional(),
+  animation: z.enum(slideAnimations).optional(),
 });
 
 const sceneEventSchema = z.object({

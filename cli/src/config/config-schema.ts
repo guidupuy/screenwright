@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { slideAnimations } from '../timeline/types.js';
 
 export const openaiVoices = [
   'alloy', 'ash', 'ballad', 'cedar', 'coral', 'echo',
@@ -17,6 +18,7 @@ export const brandingSchema = z.object({
   brandColor: hexColor,
   textColor: hexColor,
   fontFamily: z.string().optional(),
+  animation: z.enum(slideAnimations).optional(),
 });
 
 export type BrandingConfig = z.infer<typeof brandingSchema>;
