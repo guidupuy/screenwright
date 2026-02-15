@@ -8,15 +8,11 @@ import { NarrationTrack } from './NarrationTrack.js';
 import { SceneSlide } from './SceneSlide.js';
 import { precomputeCursorPaths } from './cursor-path.js';
 import { findClosestFrame } from './frame-lookup.js';
-import { SLIDE_DURATION_MS, sourceTimeMs, computeSlideSegments, remapEvents } from './time-remap.js';
+import { resolveSlideScenes, sourceTimeMs, computeSlideSegments, remapEvents, msToFrames } from './time-remap.js';
 
 interface Props {
   timeline: ValidatedTimeline;
   branding?: BrandingConfig;
-}
-
-function msToFrames(ms: number, fps: number): number {
-  return Math.round((ms / 1000) * fps);
 }
 
 export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
@@ -25,14 +21,14 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
   const outputTimeMs = (frame / fps) * 1000;
 
   const scenes = timeline.events.filter((e): e is SceneEvent => e.type === 'scene');
-  const slideDuration = branding ? SLIDE_DURATION_MS : 0;
+  const slideScenes = resolveSlideScenes(scenes);
 
-  const timeMs = branding && scenes.length
-    ? sourceTimeMs(outputTimeMs, scenes, slideDuration)
+  const timeMs = slideScenes.length > 0
+    ? sourceTimeMs(outputTimeMs, slideScenes)
     : outputTimeMs;
 
-  const eventsToUse = branding && scenes.length
-    ? remapEvents(timeline.events, scenes, slideDuration)
+  const eventsToUse = slideScenes.length > 0
+    ? remapEvents(timeline.events, slideScenes)
     : timeline.events;
 
   const cursorEvents = precomputeCursorPaths(
@@ -64,7 +60,7 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
     throw new Error('Timeline must have either frameManifest or videoFile');
   }
 
-  const slideSegments = branding ? computeSlideSegments(scenes, slideDuration) : [];
+  const slideSegments = computeSlideSegments(scenes);
 
   return (
     <div
@@ -79,23 +75,31 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
       <CursorOverlay cursorEvents={cursorEvents} clickEvents={clickEvents} fps={fps} />
       <NarrationTrack narrations={narrations} fps={fps} />
 
-      {branding && slideSegments.map(seg => (
-        <Sequence
-          key={seg.sceneTitle}
-          from={msToFrames(seg.slideStartMs, fps)}
-          durationInFrames={msToFrames(slideDuration, fps)}
-        >
-          <SceneSlide
-            title={seg.sceneTitle}
-            description={seg.sceneDescription}
-            brandColor={branding.brandColor}
-            textColor={branding.textColor}
-            fontFamily={branding.fontFamily}
-            durationInFrames={msToFrames(slideDuration, fps)}
-            fps={fps}
-          />
-        </Sequence>
-      ))}
+      {slideSegments.map(seg => {
+        const brandColor = seg.slideConfig.brandColor ?? branding?.brandColor ?? '#000000';
+        const textColor = seg.slideConfig.textColor ?? branding?.textColor ?? '#FFFFFF';
+        const fontFamily = seg.slideConfig.fontFamily ?? branding?.fontFamily;
+        const titleFontSize = seg.slideConfig.titleFontSize;
+
+        return (
+          <Sequence
+            key={`slide-${seg.slideStartMs}`}
+            from={msToFrames(seg.slideStartMs, fps)}
+            durationInFrames={msToFrames(seg.slideDurationMs, fps)}
+          >
+            <SceneSlide
+              title={seg.sceneTitle}
+              description={seg.sceneDescription}
+              brandColor={brandColor}
+              textColor={textColor}
+              fontFamily={fontFamily}
+              titleFontSize={titleFontSize}
+              durationInFrames={msToFrames(seg.slideDurationMs, fps)}
+              fps={fps}
+            />
+          </Sequence>
+        );
+      })}
     </div>
   );
 };

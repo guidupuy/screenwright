@@ -140,7 +140,7 @@ Generated scenarios use the `sw` helper API:
 import type { ScreenwrightHelpers } from 'screenwright';
 
 export default async function scenario(sw: ScreenwrightHelpers) {
-  await sw.scene('Getting Started');
+  await sw.scene('Getting Started', { slide: {} });
   await sw.navigate('http://localhost:3000', {
     narration: "Let's open the app.",
   });
@@ -156,7 +156,8 @@ export default async function scenario(sw: ScreenwrightHelpers) {
 
 | Method | Description |
 |--------|-------------|
-| `sw.scene(title, description?)` | Mark a scene/chapter boundary (adds a title slide when `branding` is configured) |
+| `sw.scene(title)` | Mark a scene boundary (no slide) |
+| `sw.scene(title, { slide?: { duration?, brandColor?, ... } })` | Scene with optional transition slide (pass `{ slide: {} }` for defaults) |
 | `sw.navigate(url, { narration? })` | Navigate to URL |
 | `sw.click(selector, { narration? })` | Click an element |
 | `sw.fill(selector, value, { narration? })` | Type into an input (character by character) |
@@ -186,11 +187,11 @@ const config = {
   colorScheme: "light",
   timezoneId: "America/New_York",
 
-  // Scene transition slides (optional)
+  // Default slide styling (used when sw.scene() is called with options)
   branding: {
-    brandColor: "#4F46E5",       // Slide background color (hex)
-    textColor: "#FFFFFF",        // Slide text color (hex)
-    fontFamily: "Inter",         // Google Fonts family (optional)
+    brandColor: "#4F46E5",       // Default slide background color (hex)
+    textColor: "#FFFFFF",        // Default slide text color (hex)
+    fontFamily: "Inter",         // Default Google Fonts family (optional)
   },
 };
 

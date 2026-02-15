@@ -38,7 +38,7 @@ describe('calculateMoveDuration', () => {
 });
 
 describe('createHelpers', () => {
-  it('scene() emits a scene event', async () => {
+  it('scene() with string description emits scene event without slide', async () => {
     const page = mockPage();
     const collector = new TimelineCollector();
     collector.start();
@@ -49,7 +49,89 @@ describe('createHelpers', () => {
 
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe('scene');
-    expect((events[0] as any).title).toBe('Intro');
+    const ev = events[0] as any;
+    expect(ev.title).toBe('Intro');
+    expect(ev.description).toBe('The beginning');
+    expect(ev.slide).toBeUndefined();
+  });
+
+  it('scene() with no second arg emits scene event without slide', async () => {
+    const page = mockPage();
+    const collector = new TimelineCollector();
+    collector.start();
+    const sw = createHelpers(page, collector);
+
+    await sw.scene('Intro');
+    const events = collector.getEvents();
+
+    expect(events).toHaveLength(1);
+    const ev = events[0] as any;
+    expect(ev.title).toBe('Intro');
+    expect(ev.description).toBeUndefined();
+    expect(ev.slide).toBeUndefined();
+  });
+
+  it('scene() with empty slide object emits slide with defaults', async () => {
+    const page = mockPage();
+    const collector = new TimelineCollector();
+    collector.start();
+    const sw = createHelpers(page, collector);
+
+    await sw.scene('Intro', { slide: {} });
+    const events = collector.getEvents();
+
+    expect(events).toHaveLength(1);
+    const ev = events[0] as any;
+    expect(ev.title).toBe('Intro');
+    expect(ev.description).toBeUndefined();
+    expect(ev.slide).toEqual({});
+  });
+
+  it('scene() with description-only object does not emit slide', async () => {
+    const page = mockPage();
+    const collector = new TimelineCollector();
+    collector.start();
+    const sw = createHelpers(page, collector);
+
+    await sw.scene('Intro', { description: 'The beginning' });
+    const events = collector.getEvents();
+
+    expect(events).toHaveLength(1);
+    const ev = events[0] as any;
+    expect(ev.title).toBe('Intro');
+    expect(ev.description).toBe('The beginning');
+    expect(ev.slide).toBeUndefined();
+  });
+
+  it('scene() with full options passes description and slide config', async () => {
+    const page = mockPage();
+    const collector = new TimelineCollector();
+    collector.start();
+    const sw = createHelpers(page, collector);
+
+    await sw.scene('Intro', {
+      description: 'The beginning',
+      slide: {
+        duration: 3000,
+        brandColor: '#4F46E5',
+        textColor: '#FFFFFF',
+        fontFamily: 'Inter',
+        titleFontSize: 72,
+      },
+    });
+    const events = collector.getEvents();
+
+    expect(events).toHaveLength(1);
+    const ev = events[0] as any;
+    expect(ev.title).toBe('Intro');
+    expect(ev.description).toBe('The beginning');
+    expect(ev.slide).toEqual({
+      duration: 3000,
+      brandColor: '#4F46E5',
+      textColor: '#FFFFFF',
+      fontFamily: 'Inter',
+      titleFontSize: 72,
+    });
   });
 
   it('click() emits cursor_target then action events', async () => {

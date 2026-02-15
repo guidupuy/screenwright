@@ -106,6 +106,131 @@ describe('timelineSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('accepts scene event with slide config', () => {
+    const timeline = {
+      ...sampleTimeline,
+      events: [{
+        type: 'scene',
+        id: 'ev-001',
+        timestampMs: 0,
+        title: 'Intro',
+        slide: {
+          duration: 3000,
+          brandColor: '#4F46E5',
+          textColor: '#FFFFFF',
+          fontFamily: 'Inter',
+          titleFontSize: 72,
+        },
+      }],
+    };
+    const result = timelineSchema.safeParse(timeline);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts scene event with empty slide config', () => {
+    const timeline = {
+      ...sampleTimeline,
+      events: [{
+        type: 'scene',
+        id: 'ev-001',
+        timestampMs: 0,
+        title: 'Intro',
+        slide: {},
+      }],
+    };
+    const result = timelineSchema.safeParse(timeline);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts scene event without slide', () => {
+    const timeline = {
+      ...sampleTimeline,
+      events: [{
+        type: 'scene',
+        id: 'ev-001',
+        timestampMs: 0,
+        title: 'Intro',
+      }],
+    };
+    const result = timelineSchema.safeParse(timeline);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects scene slide with invalid hex color', () => {
+    const bad = {
+      ...sampleTimeline,
+      events: [{
+        type: 'scene',
+        id: 'ev-001',
+        timestampMs: 0,
+        title: 'Bad',
+        slide: { brandColor: 'not-a-color' },
+      }],
+    };
+    const result = timelineSchema.safeParse(bad);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects scene slide with 5-character hex color', () => {
+    const bad = {
+      ...sampleTimeline,
+      events: [{
+        type: 'scene',
+        id: 'ev-001',
+        timestampMs: 0,
+        title: 'Bad',
+        slide: { brandColor: '#12345' },
+      }],
+    };
+    const result = timelineSchema.safeParse(bad);
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts scene slide with 3-character hex color', () => {
+    const timeline = {
+      ...sampleTimeline,
+      events: [{
+        type: 'scene',
+        id: 'ev-001',
+        timestampMs: 0,
+        title: 'Good',
+        slide: { brandColor: '#FFF' },
+      }],
+    };
+    const result = timelineSchema.safeParse(timeline);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects scene slide with negative duration', () => {
+    const bad = {
+      ...sampleTimeline,
+      events: [{
+        type: 'scene',
+        id: 'ev-001',
+        timestampMs: 0,
+        title: 'Bad',
+        slide: { duration: -1 },
+      }],
+    };
+    const result = timelineSchema.safeParse(bad);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects scene slide with zero duration', () => {
+    const bad = {
+      ...sampleTimeline,
+      events: [{
+        type: 'scene',
+        id: 'ev-001',
+        timestampMs: 0,
+        title: 'Bad',
+        slide: { duration: 0 },
+      }],
+    };
+    const result = timelineSchema.safeParse(bad);
+    expect(result.success).toBe(false);
+  });
+
   it('accepts empty events array', () => {
     const timeline = { ...sampleTimeline, events: [] };
     const result = timelineSchema.safeParse(timeline);

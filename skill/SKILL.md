@@ -68,7 +68,9 @@ The scenario must:
 - Import `ScreenwrightHelpers` from `screenwright`
 - Export a default async function: `export default async function scenario(sw: ScreenwrightHelpers)`
 - Use the `sw.*` API exclusively:
-  - `sw.scene(title, description?)` — scene/chapter boundary
+  - `sw.scene(title)` — scene marker only, no slide
+  - `sw.scene(title, description?)` — scene marker with optional description, no slide
+  - `sw.scene(title, { description?, slide?: { duration?, brandColor?, textColor?, fontFamily?, titleFontSize? } })` — scene with optional transition slide (pass `{ slide: {} }` for defaults)
   - `sw.navigate(url, { narration? })` — navigate to URL
   - `sw.click(selector, { narration? })` — click element
   - `sw.fill(selector, value, { narration? })` — type into input (character by character)
@@ -90,7 +92,7 @@ The scenario must:
 import type { ScreenwrightHelpers } from 'screenwright';
 
 export default async function scenario(sw: ScreenwrightHelpers) {
-  await sw.scene('Signing In');
+  await sw.scene('Signing In', { slide: {} });
   await sw.navigate('http://localhost:3000/login', {
     narration: "Let's start by logging into the dashboard.",
   });
@@ -102,7 +104,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
     narration: 'Click sign in.',
   });
 
-  await sw.scene('Viewing the Dashboard');
+  await sw.scene('Viewing the Dashboard', { slide: {} });
   await sw.narrate('The dashboard shows our key metrics at a glance.');
 }
 ```
@@ -113,12 +115,12 @@ export default async function scenario(sw: ScreenwrightHelpers) {
 import type { ScreenwrightHelpers } from 'screenwright';
 
 export default async function scenario(sw: ScreenwrightHelpers) {
-  await sw.scene('Starting the Application');
+  await sw.scene('Starting the Application', { slide: {} });
   await sw.navigate('http://localhost:3000/apply', {
     narration: 'We begin on the application form.',
   });
 
-  await sw.scene('Personal Information');
+  await sw.scene('Personal Information', { slide: {} });
   await sw.fill('[data-testid="first-name"]', 'Jordan', {
     narration: "Let's fill in our personal details.",
   });
@@ -133,7 +135,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.click('[data-testid="role-select"]');
   await sw.click('[data-testid="role-engineering"]');
 
-  await sw.scene('Review and Submit');
+  await sw.scene('Review and Submit', { slide: {} });
   await sw.narrate('Everything looks good. Time to submit.');
   await sw.wait(1500);
   await sw.press('Tab');

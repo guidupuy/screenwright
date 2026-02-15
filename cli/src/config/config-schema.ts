@@ -11,7 +11,7 @@ export const DEFAULT_TTS_INSTRUCTIONS =
   'Speak in an upbeat, enthusiastic tone. This is a tech product demo video. ' +
   'Be energetic and professional, like a friendly product evangelist.';
 
-const hexColor = z.string().regex(/^#[0-9a-fA-F]{3,8}$/, 'Must be a hex color like #4F46E5');
+const hexColor = z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/, 'Must be a hex color like #4F46E5');
 
 export const brandingSchema = z.object({
   brandColor: hexColor,

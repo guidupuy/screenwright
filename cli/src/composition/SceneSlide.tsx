@@ -5,7 +5,7 @@ import { delayRender, continueRender, useCurrentFrame, interpolate, spring } fro
 declare const document: {
   createElement(tag: string): HTMLLinkElement;
   head: { appendChild(el: unknown): void; removeChild(el: unknown): void };
-  fonts: { ready: Promise<void> };
+  fonts: { ready: Promise<void>; check(font: string): boolean };
 };
 
 interface HTMLLinkElement {
@@ -21,6 +21,7 @@ interface Props {
   brandColor: string;
   textColor: string;
   fontFamily?: string;
+  titleFontSize?: number;
   durationInFrames: number;
   fps: number;
 }
@@ -35,6 +36,7 @@ export const SceneSlide: React.FC<Props> = ({
   brandColor,
   textColor,
   fontFamily,
+  titleFontSize = 64,
   durationInFrames,
   fps,
 }) => {
@@ -43,6 +45,12 @@ export const SceneSlide: React.FC<Props> = ({
 
   useEffect(() => {
     if (!fontFamily || !handle) return;
+
+    // Skip network fetch if font is already available (system font or previously loaded)
+    if (document.fonts.check(`16px "${fontFamily}"`)) {
+      continueRender(handle);
+      return;
+    }
 
     const encoded = encodeURIComponent(fontFamily);
     const link = document.createElement('link');
@@ -126,7 +134,7 @@ export const SceneSlide: React.FC<Props> = ({
         <h1
           style={{
             color: textColor,
-            fontSize: 64,
+            fontSize: titleFontSize,
             fontWeight: 700,
             margin: 0,
             lineHeight: 1.2,
@@ -149,7 +157,7 @@ export const SceneSlide: React.FC<Props> = ({
             <p
               style={{
                 color: textColor,
-                fontSize: 28,
+                fontSize: Math.round(titleFontSize * 0.44),
                 fontWeight: 400,
                 margin: 0,
                 opacity: 0.85,

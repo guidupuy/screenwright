@@ -26,12 +26,21 @@ export type TimelineEvent =
   | NarrationEvent
   | WaitEvent;
 
+export interface SceneSlideConfig {
+  duration?: number;
+  brandColor?: string;
+  textColor?: string;
+  fontFamily?: string;
+  titleFontSize?: number;
+}
+
 export interface SceneEvent {
   type: 'scene';
   id: string;
   timestampMs: number;
   title: string;
   description?: string;
+  slide?: SceneSlideConfig;
 }
 
 export type ActionType = 'click' | 'fill' | 'hover' | 'select' | 'press' | 'navigate';

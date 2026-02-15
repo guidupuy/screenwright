@@ -1,13 +1,19 @@
 import type { Page } from 'playwright';
 import type { TimelineCollector } from './timeline-collector.js';
+import type { SceneSlideConfig } from '../timeline/types.js';
 
 export interface ActionOptions {
   narration?: string;
 }
 
+export interface SceneOptions {
+  description?: string;
+  slide?: SceneSlideConfig;
+}
+
 export interface ScreenwrightHelpers {
   page: Page;
-  scene(title: string, description?: string): Promise<void>;
+  scene(title: string, descriptionOrOptions?: string | SceneOptions): Promise<void>;
   navigate(url: string, opts?: ActionOptions): Promise<void>;
   click(selector: string, opts?: ActionOptions): Promise<void>;
   fill(selector: string, value: string, opts?: ActionOptions): Promise<void>;
@@ -78,8 +84,13 @@ export function createHelpers(page: Page, collector: TimelineCollector): Screenw
   return {
     page,
 
-    async scene(title, description) {
-      collector.emit({ type: 'scene', title, description });
+    async scene(title, descriptionOrOptions) {
+      if (typeof descriptionOrOptions === 'string' || descriptionOrOptions === undefined) {
+        collector.emit({ type: 'scene', title, description: descriptionOrOptions });
+      } else {
+        const { description, slide } = descriptionOrOptions;
+        collector.emit({ type: 'scene', title, description, slide });
+      }
     },
 
     async navigate(url, actionOpts) {

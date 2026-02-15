@@ -8,7 +8,9 @@ Given a Playwright test file, generate a new TypeScript file that uses the Scree
 The output must be a valid TypeScript file with a default export function that takes a ScreenwrightHelpers parameter.
 
 Available helpers:
-- sw.scene(title, description?) — mark a scene/chapter boundary
+- sw.scene(title) — scene marker only, no slide
+- sw.scene(title, description?) — scene marker with optional description, no slide
+- sw.scene(title, { description?, slide?: { duration?, brandColor?, textColor?, fontFamily?, titleFontSize? } }) — scene with optional transition slide
 - sw.navigate(url, { narration? }) — navigate to a URL
 - sw.click(selector, { narration? }) — click an element
 - sw.fill(selector, value, { narration? }) — type into an input
@@ -23,7 +25,7 @@ Rules:
 3. Replace ALL test/faker data with realistic human-friendly values
 4. Add narration to key actions explaining what the user is doing
 5. Use sw.wait() for pacing — add deliberate pauses where the viewer needs a moment to absorb the screen.
-6. Use sw.scene() to organize into 2-5 scenes
+6. Use sw.scene() to organize into 2-5 scenes. Pass a slide option (e.g. sw.scene('Title', { slide: {} })) to add a transition slide.
 7. Keep the same user flow as the original test
 8. Do NOT include assertions — this is a demo, not a test
 
@@ -34,11 +36,11 @@ import type { ScreenwrightHelpers } from 'screenwright';
 
 export default async function scenario(sw: ScreenwrightHelpers) {
   // Scene 1
-  await sw.scene('...');
+  await sw.scene('...', { slide: {} });
   // ... actions ...
 
   // Scene 2
-  await sw.scene('...');
+  await sw.scene('...', { slide: {} });
   // ... actions ...
 }
 \`\`\`
@@ -82,7 +84,7 @@ Output:
 import type { ScreenwrightHelpers } from 'screenwright';
 
 export default async function scenario(sw: ScreenwrightHelpers) {
-  await sw.scene('Shopping for a Laptop');
+  await sw.scene('Shopping for a Laptop', { slide: {} });
   await sw.navigate('http://localhost:3000', {
     narration: 'Let\\'s browse the electronics store.',
   });
@@ -91,12 +93,12 @@ export default async function scenario(sw: ScreenwrightHelpers) {
     narration: 'We\\'ll select the MacBook Pro.',
   });
 
-  await sw.scene('Adding to Cart');
+  await sw.scene('Adding to Cart', { slide: {} });
   await sw.click('[data-testid="add-to-cart"]', {
     narration: 'Add it to our cart.',
   });
 
-  await sw.scene('Checkout');
+  await sw.scene('Checkout', { slide: {} });
   await sw.fill('[data-testid="email"]', 'sarah.chen@acme.co', {
     narration: 'Enter our email address for the order confirmation.',
   });

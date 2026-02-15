@@ -1,11 +1,20 @@
 import { z } from 'zod';
 
+const sceneSlideConfigSchema = z.object({
+  duration: z.number().positive().optional(),
+  brandColor: z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/).optional(),
+  textColor: z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/).optional(),
+  fontFamily: z.string().optional(),
+  titleFontSize: z.number().positive().optional(),
+});
+
 const sceneEventSchema = z.object({
   type: z.literal('scene'),
   id: z.string(),
   timestampMs: z.number().nonnegative(),
   title: z.string(),
   description: z.string().optional(),
+  slide: sceneSlideConfigSchema.optional(),
 });
 
 const actionEventSchema = z.object({
