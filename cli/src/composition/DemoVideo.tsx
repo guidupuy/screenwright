@@ -68,17 +68,19 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
     s => outputTimeMs >= s.slideStartMs && outputTimeMs < s.slideEndMs
   );
 
-  // Check if current time is inside a slide-to-slide transition
+  // Check if current time is inside a transition involving at least one slide
   let slideTransition: {
-    transition: TransitionEvent; before: typeof slideSegments[number]; after: typeof slideSegments[number];
+    transition: TransitionEvent;
+    before: typeof slideSegments[number] | null;
+    after: typeof slideSegments[number] | null;
   } | null = null;
   if (!activeSlide) {
     for (const t of transitionEvents) {
       if (outputTimeMs < t.timestampMs || outputTimeMs >= t.timestampMs + t.durationMs) continue;
       const tEnd = t.timestampMs + t.durationMs;
-      const before = slideSegments.find(s => Math.abs(s.slideEndMs - t.timestampMs) < 50);
-      const after = slideSegments.find(s => Math.abs(s.slideStartMs - tEnd) < 50);
-      if (before && after) { slideTransition = { transition: t, before, after }; break; }
+      const before = slideSegments.find(s => Math.abs(s.slideEndMs - t.timestampMs) < 50) ?? null;
+      const after = slideSegments.find(s => Math.abs(s.slideStartMs - tEnd) < 50) ?? null;
+      if (before || after) { slideTransition = { transition: t, before, after }; break; }
     }
   }
 
@@ -108,25 +110,46 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
     // Slide IS the base layer — no frame images
     baseLayer = <SceneSlide {...resolveSlideProps(activeSlide)} />;
   } else if (slideTransition) {
-    // Slide-to-slide transition — both slides as base layer
+    // Transition involving at least one slide (slide↔slide, frame→slide, or slide→frame)
     const { transition: t, before, after } = slideTransition;
     const progress = (outputTimeMs - t.timestampMs) / t.durationMs;
     const { width: vw } = timeline.metadata.viewport;
     const styles = getTransitionStyles(t.transition, progress, vw);
-    const afterProps = resolveSlideProps(after);
-    const beforeProps = resolveSlideProps(before);
     const faceClip = styles.container ? {} : { overflow: 'hidden' as const };
+    const imgStyle = { width: '100%' as const, height: '100%' as const, display: 'block' as const };
+
+    // Resolve entrance (new content arriving)
+    let entranceContent: React.ReactNode;
+    if (after) {
+      entranceContent = <SceneSlide {...resolveSlideProps(after)} />;
+    } else if (frameManifest && frameManifest.length > 0) {
+      const afterEntry = findClosestFrame(frameManifest, timeMs);
+      entranceContent = <Img src={staticFile(afterEntry.file)} style={imgStyle} />;
+    }
+
+    // Resolve exit (old content departing)
+    let exitContent: React.ReactNode;
+    if (before) {
+      exitContent = <SceneSlide {...resolveSlideProps(before)} />;
+    } else if (frameManifest && frameManifest.length > 0) {
+      const beforeSourceTime = slideScenes.length > 0
+        ? sourceTimeMs(t.timestampMs, slideScenes)
+        : t.timestampMs;
+      const beforeEntry = findClosestFrame(frameManifest, beforeSourceTime);
+      exitContent = <Img src={staticFile(beforeEntry.file)} style={imgStyle} />;
+    }
+
     const faces = (
       <>
         <div style={{ position: 'absolute', inset: 0, ...faceClip, ...styles.entrance }}>
-          <SceneSlide {...afterProps} />
+          {entranceContent}
         </div>
         <div style={{ position: 'absolute', inset: 0, ...faceClip, ...styles.exit }}>
-          <SceneSlide {...beforeProps} />
+          {exitContent}
         </div>
         {styles.exit2 && (
           <div style={{ position: 'absolute', inset: 0, ...faceClip, ...styles.exit2 }}>
-            <SceneSlide {...beforeProps} />
+            {exitContent}
           </div>
         )}
       </>
@@ -138,9 +161,12 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
     if (styles.perspective) {
       wrappedFaces = <div style={{ position: 'absolute', inset: 0, perspective: styles.perspective }}>{wrappedFaces}</div>;
     }
+    const slideSide = after ?? before;
+    const backdropColor = styles.backdrop
+      ?? (slideSide ? resolveSlideProps(slideSide).brandColor : '#000000');
     baseLayer = (
       <>
-        <div style={{ position: 'absolute', inset: 0, backgroundColor: styles.backdrop ?? afterProps.brandColor }} />
+        <div style={{ position: 'absolute', inset: 0, backgroundColor: backdropColor }} />
         {wrappedFaces}
       </>
     );
