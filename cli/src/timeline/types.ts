@@ -62,6 +62,7 @@ export interface ActionEvent {
   value?: string;
   durationMs: number;
   boundingBox: { x: number; y: number; width: number; height: number } | null;
+  settledAtMs?: number;
 }
 
 export interface CursorTargetEvent {

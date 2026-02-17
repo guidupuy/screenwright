@@ -101,15 +101,18 @@ export function createHelpers(page: Page, collector: TimelineCollector): Screenw
 
     async navigate(url, actionOpts) {
       if (actionOpts?.narration) await emitNarration(actionOpts.narration);
-      collector.emit({
-        type: 'action',
-        action: 'navigate',
-        selector: url,
-        durationMs: 0,
-        boundingBox: null,
-      });
+      const startMs = collector.elapsed();
       try {
         await page.goto(url, { waitUntil: 'domcontentloaded' });
+        collector.emit({
+          type: 'action',
+          action: 'navigate',
+          selector: url,
+          durationMs: 0,
+          boundingBox: null,
+          timestampMs: startMs,
+          settledAtMs: collector.elapsed(),
+        });
       } catch (err) {
         throw actionError('navigate', url, err);
       }
@@ -122,14 +125,17 @@ export function createHelpers(page: Page, collector: TimelineCollector): Screenw
         await moveCursorTo(center.x, center.y);
         const locator = page.locator(selector).first();
         const box = await locator.boundingBox();
+        const startMs = collector.elapsed();
+        await locator.click();
         collector.emit({
           type: 'action',
           action: 'click',
           selector,
           durationMs: 200,
           boundingBox: box ? { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) } : null,
+          timestampMs: startMs,
+          settledAtMs: collector.elapsed(),
         });
-        await locator.click();
       } catch (err) {
         throw actionError('click', selector, err);
       }
@@ -143,6 +149,10 @@ export function createHelpers(page: Page, collector: TimelineCollector): Screenw
         const locator = page.locator(selector).first();
         const box = await locator.boundingBox();
         await locator.click();
+        const startMs = collector.elapsed();
+        for (const char of value) {
+          await page.keyboard.type(char, { delay: CHAR_TYPE_DELAY_MS });
+        }
         collector.emit({
           type: 'action',
           action: 'fill',
@@ -150,10 +160,9 @@ export function createHelpers(page: Page, collector: TimelineCollector): Screenw
           value,
           durationMs: value.length * CHAR_TYPE_DELAY_MS,
           boundingBox: box ? { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) } : null,
+          timestampMs: startMs,
+          settledAtMs: collector.elapsed(),
         });
-        for (const char of value) {
-          await page.keyboard.type(char, { delay: CHAR_TYPE_DELAY_MS });
-        }
       } catch (err) {
         throw actionError('fill', selector, err);
       }
@@ -166,14 +175,17 @@ export function createHelpers(page: Page, collector: TimelineCollector): Screenw
         await moveCursorTo(center.x, center.y);
         const locator = page.locator(selector).first();
         const box = await locator.boundingBox();
+        const startMs = collector.elapsed();
+        await locator.hover();
         collector.emit({
           type: 'action',
           action: 'hover',
           selector,
           durationMs: 200,
           boundingBox: box ? { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) } : null,
+          timestampMs: startMs,
+          settledAtMs: collector.elapsed(),
         });
-        await locator.hover();
       } catch (err) {
         throw actionError('hover', selector, err);
       }
@@ -181,15 +193,18 @@ export function createHelpers(page: Page, collector: TimelineCollector): Screenw
 
     async press(key, actionOpts) {
       if (actionOpts?.narration) await emitNarration(actionOpts.narration);
-      collector.emit({
-        type: 'action',
-        action: 'press',
-        selector: key,
-        durationMs: 100,
-        boundingBox: null,
-      });
+      const startMs = collector.elapsed();
       try {
         await page.keyboard.press(key);
+        collector.emit({
+          type: 'action',
+          action: 'press',
+          selector: key,
+          durationMs: 100,
+          boundingBox: null,
+          timestampMs: startMs,
+          settledAtMs: collector.elapsed(),
+        });
       } catch (err) {
         throw actionError('press', key, err);
       }
@@ -209,12 +224,15 @@ export function createHelpers(page: Page, collector: TimelineCollector): Screenw
       if (durationMs <= 0 || !Number.isFinite(durationMs)) {
         throw new Error(`sw.transition() duration must be a positive number, got ${durationMs}`);
       }
+      const events = collector.getEvents();
+      if (events.length > 0 && events[events.length - 1].type === 'transition') {
+        console.warn('sw.transition() called twice with no action between them — both transitions will stack at the same output position.');
+      }
       collector.emit({
         type: 'transition',
         transition: opts?.type ?? 'fade',
         durationMs,
       });
-      await page.waitForTimeout(durationMs);
     },
   };
 }

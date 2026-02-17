@@ -297,7 +297,6 @@ describe('createHelpers', () => {
     const ev = events[0] as any;
     expect(ev.transition).toBe('fade');
     expect(ev.durationMs).toBe(500);
-    expect(page.waitForTimeout).toHaveBeenCalledWith(500);
   });
 
   it('transition() passes through custom type and duration', async () => {
@@ -312,17 +311,98 @@ describe('createHelpers', () => {
     const ev = events[0] as any;
     expect(ev.transition).toBe('wipe');
     expect(ev.durationMs).toBe(800);
-    expect(page.waitForTimeout).toHaveBeenCalledWith(800);
   });
 
-  it('transition() waits for duration via page.waitForTimeout', async () => {
+  it('transition() does not call page.waitForTimeout', async () => {
     const page = mockPage();
     const collector = new TimelineCollector();
     collector.start();
     const sw = createHelpers(page, collector);
 
     await sw.transition({ duration: 300 });
-    expect(page.waitForTimeout).toHaveBeenCalledWith(300);
+    expect(page.waitForTimeout).not.toHaveBeenCalled();
+  });
+
+  it('transition() warns on back-to-back calls with no action between', async () => {
+    const page = mockPage();
+    const collector = new TimelineCollector();
+    collector.start();
+    const sw = createHelpers(page, collector);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await sw.transition();
+    expect(warnSpy).not.toHaveBeenCalled();
+
+    await sw.transition({ type: 'wipe' });
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy.mock.calls[0][0]).toContain('no action between');
+
+    warnSpy.mockRestore();
+  });
+
+  it('navigate() stamps settledAtMs after goto', async () => {
+    const page = mockPage();
+    const collector = new TimelineCollector();
+    collector.start();
+    const sw = createHelpers(page, collector);
+
+    await sw.navigate('http://localhost:3000');
+    const events = collector.getEvents();
+    const ev = events[0] as any;
+    expect(ev.settledAtMs).toBeDefined();
+    expect(ev.settledAtMs).toBeGreaterThanOrEqual(ev.timestampMs);
+  });
+
+  it('click() stamps settledAtMs after click', async () => {
+    const page = mockPage();
+    const collector = new TimelineCollector();
+    collector.start();
+    const sw = createHelpers(page, collector);
+
+    await sw.click('.btn');
+    const events = collector.getEvents();
+    const actionEvent = events.find(e => e.type === 'action') as any;
+    expect(actionEvent.settledAtMs).toBeDefined();
+    expect(actionEvent.settledAtMs).toBeGreaterThanOrEqual(actionEvent.timestampMs);
+  });
+
+  it('hover() stamps settledAtMs after hover', async () => {
+    const page = mockPage();
+    const collector = new TimelineCollector();
+    collector.start();
+    const sw = createHelpers(page, collector);
+
+    await sw.hover('.btn');
+    const events = collector.getEvents();
+    const actionEvent = events.find(e => e.type === 'action') as any;
+    expect(actionEvent.settledAtMs).toBeDefined();
+    expect(actionEvent.settledAtMs).toBeGreaterThanOrEqual(actionEvent.timestampMs);
+  });
+
+  it('press() stamps settledAtMs after press', async () => {
+    const page = mockPage();
+    const collector = new TimelineCollector();
+    collector.start();
+    const sw = createHelpers(page, collector);
+
+    await sw.press('Enter');
+    const events = collector.getEvents();
+    const ev = events[0] as any;
+    expect(ev.settledAtMs).toBeDefined();
+    expect(ev.settledAtMs).toBeGreaterThanOrEqual(ev.timestampMs);
+  });
+
+  it('fill() stamps settledAtMs after typing', async () => {
+    const page = mockPage();
+    const collector = new TimelineCollector();
+    collector.start();
+    const sw = createHelpers(page, collector);
+
+    await sw.fill('.input', 'abc');
+    const events = collector.getEvents();
+    const actionEvent = events.find(e => e.type === 'action') as any;
+    expect(actionEvent.settledAtMs).toBeDefined();
+    expect(actionEvent.settledAtMs).toBeGreaterThanOrEqual(actionEvent.timestampMs);
   });
 
   it('transition() throws on zero duration', async () => {

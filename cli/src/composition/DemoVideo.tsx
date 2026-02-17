@@ -9,7 +9,16 @@ import { SceneSlide } from './SceneSlide.js';
 import { precomputeCursorPaths } from './cursor-path.js';
 import { findClosestFrame } from './frame-lookup.js';
 import { getTransitionStyles } from './transition-styles.js';
-import { resolveSlideScenes, sourceTimeMs, computeSlideSegments, remapEvents } from './time-remap.js';
+import {
+  resolveSlideScenes,
+  resolveTransitions,
+  sourceTimeMs,
+  computeOutputSegments,
+  remapEvents,
+} from './time-remap.js';
+
+const IMG_STYLE = { width: '100%' as const, height: '100%' as const, display: 'block' as const };
+const JITTER_MS = 50;
 
 interface Props {
   timeline: ValidatedTimeline;
@@ -22,22 +31,21 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
   const outputTimeMs = (frame / fps) * 1000;
 
   const scenes = timeline.events.filter((e): e is SceneEvent => e.type === 'scene');
-  const slideScenes = resolveSlideScenes(scenes, timeline.events);
+  const slideScenes = resolveSlideScenes(scenes);
+  const resolvedTransitions = resolveTransitions(timeline.events);
 
-  const timeMs = slideScenes.length > 0
-    ? sourceTimeMs(outputTimeMs, slideScenes)
+  const hasInsertions = slideScenes.length > 0 || resolvedTransitions.length > 0;
+
+  const timeMs = hasInsertions
+    ? sourceTimeMs(outputTimeMs, slideScenes, resolvedTransitions)
     : outputTimeMs;
 
-  const eventsToUse = slideScenes.length > 0
-    ? remapEvents(timeline.events, slideScenes)
+  const eventsToUse = hasInsertions
+    ? remapEvents(timeline.events, slideScenes, resolvedTransitions)
     : timeline.events;
 
   const cursorEvents = precomputeCursorPaths(
     eventsToUse.filter((e): e is CursorTargetEvent => e.type === 'cursor_target')
-  );
-
-  const transitionEvents = eventsToUse.filter(
-    (e): e is TransitionEvent => e.type === 'transition'
   );
 
   const clickEvents = eventsToUse.filter(
@@ -50,7 +58,8 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
 
   const { frameManifest, videoFile } = timeline.metadata;
 
-  const slideSegments = computeSlideSegments(scenes);
+  const { slides: slideSegments, transitions: transitionSegments } =
+    computeOutputSegments(scenes, resolvedTransitions);
 
   function resolveSlideProps(seg: typeof slideSegments[number]) {
     return {
@@ -68,33 +77,8 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
     s => outputTimeMs >= s.slideStartMs && outputTimeMs < s.slideEndMs
   );
 
-  // Check if current time is inside a transition involving a slide or scenario edge
-  let slideTransition: {
-    transition: TransitionEvent;
-    before: typeof slideSegments[number] | null;
-    after: typeof slideSegments[number] | null;
-  } | null = null;
-  if (!activeSlide) {
-    for (const t of transitionEvents) {
-      if (outputTimeMs < t.timestampMs || outputTimeMs >= t.timestampMs + t.durationMs) continue;
-      const tEnd = t.timestampMs + t.durationMs;
-      const before = slideSegments.find(s => Math.abs(s.slideEndMs - t.timestampMs) < 50) ?? null;
-      const after = slideSegments.find(s => Math.abs(s.slideStartMs - tEnd) < 50) ?? null;
-      if (before || after) { slideTransition = { transition: t, before, after }; break; }
-      // Transitions at scenario edges (no content before/after) fade to/from backdrop
-      const hasAfter = eventsToUse.some(
-        e => e.timestampMs >= tEnd - 50 && (e.type === 'scene' || e.type === 'action')
-      );
-      const hasBefore = eventsToUse.some(
-        e => e.timestampMs < t.timestampMs + 50 && (e.type === 'scene' || e.type === 'action')
-      );
-      if (!hasAfter || !hasBefore) { slideTransition = { transition: t, before, after }; break; }
-    }
-  }
-
-  // Fallback: if no exact match but slides exist, snap to the nearest slide.
-  // Handles timing jitter gaps (e.g. first frame at t=0 when first slide starts at t=1).
-  if (!activeSlide && !slideTransition && slideSegments.length > 0) {
+  // Fallback: snap to nearest slide within 100ms jitter
+  if (!activeSlide && slideSegments.length > 0) {
     let best = slideSegments[0];
     let bestDist = Infinity;
     for (const s of slideSegments) {
@@ -108,68 +92,46 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
     if (bestDist < 100) activeSlide = best;
   }
 
-  // Find active transition for frame-based content
-  const activeTransition = !activeSlide && !slideTransition
-    ? transitionEvents.find(t => outputTimeMs >= t.timestampMs && outputTimeMs < t.timestampMs + t.durationMs)
+  // Check if current time is inside a transition segment
+  const activeTransition = !activeSlide
+    ? transitionSegments.find(t => outputTimeMs >= t.outputStartMs && outputTimeMs < t.outputEndMs)
     : null;
 
-  // Detect if we're past a terminal transition (no content follows → hold backdrop)
-  let pastTerminalTransition = false;
-  if (!activeSlide && !slideTransition && !activeTransition && transitionEvents.length > 0) {
-    const last = transitionEvents[transitionEvents.length - 1];
-    const lastEnd = last.timestampMs + last.durationMs;
-    if (outputTimeMs >= lastEnd) {
-      pastTerminalTransition = !eventsToUse.some(
-        e => e.timestampMs >= lastEnd - 50 && (e.type === 'scene' || e.type === 'action')
-      );
-    }
-  }
-
   let baseLayer: React.ReactNode;
-  if (pastTerminalTransition) {
-    baseLayer = <div style={{ position: 'absolute', inset: 0, backgroundColor: branding?.brandColor ?? '#000000' }} />;
-  } else if (activeSlide) {
-    // Slide IS the base layer — no frame images
+  if (activeSlide) {
     baseLayer = <SceneSlide {...resolveSlideProps(activeSlide)} />;
-  } else if (slideTransition) {
-    // Transition involving at least one slide (slide↔slide, frame→slide, or slide→frame)
-    const { transition: t, before, after } = slideTransition;
-    const progress = (outputTimeMs - t.timestampMs) / t.durationMs;
+  } else if (activeTransition && frameManifest && frameManifest.length > 0) {
+    const progress = (outputTimeMs - activeTransition.outputStartMs) / activeTransition.durationMs;
     const { width: vw } = timeline.metadata.viewport;
-    const styles = getTransitionStyles(t.transition, progress, vw);
+    const styles = getTransitionStyles(activeTransition.transition, progress, vw);
     const faceClip = styles.container ? {} : { overflow: 'hidden' as const };
-    const imgStyle = { width: '100%' as const, height: '100%' as const, display: 'block' as const };
 
-    const tEnd = t.timestampMs + t.durationMs;
-    const hasContentAfter = eventsToUse.some(
-      e => e.timestampMs >= tEnd - 50 && (e.type === 'scene' || e.type === 'action')
+    // Resolve exit content (before the transition)
+    const beforeSlide = slideSegments.find(
+      s => Math.abs(s.slideEndMs - activeTransition.outputStartMs) < JITTER_MS
     );
-    const hasContentBefore = eventsToUse.some(
-      e => e.timestampMs < t.timestampMs + 50 && (e.type === 'scene' || e.type === 'action')
-    );
-
-    // Resolve entrance (new content arriving)
-    // When no slide follows and no scene/action follows, leave empty so backdrop shows.
-    let entranceContent: React.ReactNode;
-    if (after) {
-      entranceContent = <SceneSlide {...resolveSlideProps(after)} />;
-    } else if (hasContentAfter && frameManifest && frameManifest.length > 0) {
-      const afterSourceTime = slideScenes.length > 0
-        ? sourceTimeMs(tEnd, slideScenes) : tEnd;
-      const afterEntry = findClosestFrame(frameManifest, afterSourceTime);
-      entranceContent = <Img src={staticFile(afterEntry.file)} style={imgStyle} />;
+    let exitContent: React.ReactNode;
+    if (!activeTransition.hasContentBefore && !beforeSlide) {
+      exitContent = undefined; // scenario start edge — backdrop
+    } else if (beforeSlide) {
+      exitContent = <SceneSlide {...resolveSlideProps(beforeSlide)} />;
+    } else {
+      const beforeEntry = findClosestFrame(frameManifest, activeTransition.beforeSourceMs);
+      exitContent = <Img src={staticFile(beforeEntry.file)} style={IMG_STYLE} />;
     }
 
-    // Resolve exit (old content departing)
-    // When no slide precedes and no scene/action precedes, leave empty so backdrop shows.
-    let exitContent: React.ReactNode;
-    if (before) {
-      exitContent = <SceneSlide {...resolveSlideProps(before)} />;
-    } else if (hasContentBefore && frameManifest && frameManifest.length > 0) {
-      const beforeSourceTime = slideScenes.length > 0
-        ? sourceTimeMs(t.timestampMs, slideScenes) : t.timestampMs;
-      const beforeEntry = findClosestFrame(frameManifest, beforeSourceTime);
-      exitContent = <Img src={staticFile(beforeEntry.file)} style={imgStyle} />;
+    // Resolve entrance content (after the transition)
+    const afterSlide = slideSegments.find(
+      s => Math.abs(s.slideStartMs - activeTransition.outputEndMs) < JITTER_MS
+    );
+    let entranceContent: React.ReactNode;
+    if (!activeTransition.hasContentAfter && !afterSlide) {
+      entranceContent = undefined; // scenario end edge — backdrop
+    } else if (afterSlide) {
+      entranceContent = <SceneSlide {...resolveSlideProps(afterSlide)} />;
+    } else {
+      const afterEntry = findClosestFrame(frameManifest, activeTransition.afterSourceMs);
+      entranceContent = <Img src={staticFile(afterEntry.file)} style={IMG_STYLE} />;
     }
 
     const faces = (
@@ -194,38 +156,22 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
     if (styles.perspective) {
       wrappedFaces = <div style={{ position: 'absolute', inset: 0, perspective: styles.perspective }}>{wrappedFaces}</div>;
     }
-    const slideSide = after ?? before;
-    const backdropColor = styles.backdrop
-      ?? (slideSide ? resolveSlideProps(slideSide).brandColor : branding?.brandColor ?? '#000000');
+    const backdropColor = styles.backdrop ?? branding?.brandColor ?? '#000000';
     baseLayer = (
       <>
         <div style={{ position: 'absolute', inset: 0, backgroundColor: backdropColor }} />
         {wrappedFaces}
       </>
     );
-  } else if (activeTransition && frameManifest && frameManifest.length > 0) {
-    const progress = (outputTimeMs - activeTransition.timestampMs) / activeTransition.durationMs;
-    const styles = getTransitionStyles(activeTransition.transition, progress, timeline.metadata.viewport.width);
-    const beforeSourceTime = slideScenes.length > 0
-      ? sourceTimeMs(activeTransition.timestampMs, slideScenes)
-      : activeTransition.timestampMs;
-    const beforeEntry = findClosestFrame(frameManifest, beforeSourceTime);
-    const afterEntry = findClosestFrame(frameManifest, timeMs);
-    baseLayer = (
-      <>
-        <Img src={staticFile(afterEntry.file)} style={{ position: 'absolute', width: '100%', height: '100%', display: 'block', ...styles.entrance }} />
-        <Img src={staticFile(beforeEntry.file)} style={{ position: 'absolute', width: '100%', height: '100%', display: 'block', ...styles.exit }} />
-        {styles.exit2 && (
-          <Img src={staticFile(beforeEntry.file)} style={{ position: 'absolute', width: '100%', height: '100%', display: 'block', ...styles.exit2 }} />
-        )}
-      </>
-    );
   } else if (frameManifest && frameManifest.length > 0) {
     const entry = findClosestFrame(frameManifest, timeMs);
     baseLayer = (
-      <Img src={staticFile(entry.file)} style={{ width: '100%', height: '100%', display: 'block' }} />
+      <Img src={staticFile(entry.file)} style={IMG_STYLE} />
     );
   } else if (videoFile) {
+    const transitionEvents = timeline.events.filter(
+      (e): e is TransitionEvent => e.type === 'transition'
+    );
     if (transitionEvents.length > 0 && frame === 0) {
       console.warn('sw.transition() effects require frame-based capture (captureMode: "frame"). Transitions will be ignored with video-based capture.');
     }
@@ -244,7 +190,7 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
       }}
     >
       {baseLayer}
-      {!activeSlide && !slideTransition && (
+      {!activeSlide && !activeTransition && (
         <CursorOverlay cursorEvents={cursorEvents} clickEvents={clickEvents} fps={fps} />
       )}
       <NarrationTrack narrations={narrations} fps={fps} />

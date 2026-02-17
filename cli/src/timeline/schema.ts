@@ -32,6 +32,7 @@ const actionEventSchema = z.object({
     width: z.number().positive(),
     height: z.number().positive(),
   }).nullable(),
+  settledAtMs: z.number().nonnegative().optional(),
 });
 
 const cursorTargetEventSchema = z.object({
@@ -103,6 +104,12 @@ export const timelineSchema = z.object({
     { message: 'metadata must have either videoFile or a non-empty frameManifest' },
   ),
   events: z.array(timelineEventSchema),
-});
+}).refine(
+  t => t.events.every(e => {
+    if (e.type !== 'action') return true;
+    return e.settledAtMs === undefined || e.settledAtMs >= e.timestampMs;
+  }),
+  { message: 'settledAtMs must be >= timestampMs' },
+);
 
 export type ValidatedTimeline = z.infer<typeof timelineSchema>;

@@ -63,10 +63,10 @@ function doorway(p: number): TransitionStyles {
 function swap(p: number): TransitionStyles {
   return {
     exit: {
-      transform: `perspective(1200px) translateX(${p * 100}%) rotateY(${-p * 45}deg) scale(${1 - p * 0.35})`,
+      transform: `perspective(1200px) translateX(${-p * 100}%) rotateY(${p * 45}deg) scale(${1 - p * 0.35})`,
     },
     entrance: {
-      transform: `perspective(1200px) translateX(${(p - 1) * 100}%) rotateY(${(1 - p) * 45}deg) scale(${0.65 + p * 0.35})`,
+      transform: `perspective(1200px) translateX(${(1 - p) * 100}%) rotateY(${-(1 - p) * 45}deg) scale(${0.65 + p * 0.35})`,
     },
     backdrop: '#000000',
   };

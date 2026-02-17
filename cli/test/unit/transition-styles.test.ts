@@ -41,7 +41,7 @@ describe('getTransitionStyles', () => {
           // Entrance sits behind doors, fully visible from the start
           expect(styles.entrance).toBeDefined();
         } else if (type === 'swap') {
-          expect(styles.entrance.transform).toContain('translateX(-100%)');
+          expect(styles.entrance.transform).toContain('translateX(100%)');
         } else if (type === 'cube') {
           expect(styles.entrance.transform).toContain('rotateY(90deg)');
         } else {
@@ -63,7 +63,7 @@ describe('getTransitionStyles', () => {
           expect(styles.exit2).toBeDefined();
           expect(styles.exit2!.transform).toContain('translateX(50%)');
         } else if (type === 'swap') {
-          expect(styles.exit.transform).toContain('translateX(100%)');
+          expect(styles.exit.transform).toContain('translateX(-100%)');
         } else if (type === 'cube') {
           expect(styles.exit.transform).toContain('translateZ(');
           expect(styles.container!.transform).toContain('rotateY(-90deg)');

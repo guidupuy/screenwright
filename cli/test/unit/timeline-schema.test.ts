@@ -323,6 +323,59 @@ describe('timelineSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('accepts action with settledAtMs', () => {
+    const timeline = {
+      ...sampleTimeline,
+      events: [{
+        type: 'action',
+        id: 'ev-001',
+        timestampMs: 100,
+        action: 'navigate',
+        selector: 'http://localhost:3000',
+        durationMs: 0,
+        boundingBox: null,
+        settledAtMs: 250,
+      }],
+    };
+    const result = timelineSchema.safeParse(timeline);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts action without settledAtMs', () => {
+    const timeline = {
+      ...sampleTimeline,
+      events: [{
+        type: 'action',
+        id: 'ev-001',
+        timestampMs: 100,
+        action: 'click',
+        selector: '.btn',
+        durationMs: 200,
+        boundingBox: { x: 10, y: 20, width: 100, height: 40 },
+      }],
+    };
+    const result = timelineSchema.safeParse(timeline);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects settledAtMs < timestampMs', () => {
+    const timeline = {
+      ...sampleTimeline,
+      events: [{
+        type: 'action',
+        id: 'ev-001',
+        timestampMs: 500,
+        action: 'navigate',
+        selector: 'http://localhost:3000',
+        durationMs: 0,
+        boundingBox: null,
+        settledAtMs: 100,
+      }],
+    };
+    const result = timelineSchema.safeParse(timeline);
+    expect(result.success).toBe(false);
+  });
+
   it('accepts empty events array', () => {
     const timeline = { ...sampleTimeline, events: [] };
     const result = timelineSchema.safeParse(timeline);

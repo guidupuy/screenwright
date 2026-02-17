@@ -5,7 +5,7 @@ import { DemoVideo } from './DemoVideo.js';
 import type { SceneEvent } from '../timeline/types.js';
 import { timelineSchema } from '../timeline/schema.js';
 import { brandingSchema } from '../config/config-schema.js';
-import { resolveSlideScenes, totalSlideDurationMs, msToFrames } from './time-remap.js';
+import { resolveSlideScenes, resolveTransitions, totalSlideDurationMs, totalTransitionDurationMs, msToFrames } from './time-remap.js';
 
 const propsSchema = z.object({
   timeline: timelineSchema,
@@ -41,7 +41,10 @@ export const RemotionRoot: React.FC = () => {
           const fps = 30;
           const scenes = props.timeline.events.filter((e): e is SceneEvent => e.type === 'scene');
           const slideScenes = resolveSlideScenes(scenes);
-          const totalMs = props.timeline.metadata.videoDurationMs + totalSlideDurationMs(slideScenes);
+          const resolvedTransitions = resolveTransitions(props.timeline.events);
+          const totalMs = props.timeline.metadata.videoDurationMs
+            + totalSlideDurationMs(slideScenes)
+            + totalTransitionDurationMs(resolvedTransitions);
           const durationInFrames = Math.max(30, msToFrames(totalMs, fps));
           return {
             durationInFrames,

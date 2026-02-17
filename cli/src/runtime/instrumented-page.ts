@@ -153,10 +153,12 @@ export async function runScenario(scenario: ScenarioFn, opts: RunOptions): Promi
     await browser.close().catch(() => {});
   }
 
-  const videoDurationMs = collector.getEvents().reduce((max, e) => {
-    const ts = e.timestampMs + ('durationMs' in e ? (e.durationMs ?? 0) : 0);
-    return Math.max(max, ts);
-  }, 0);
+  const videoDurationMs = collector.getEvents()
+    .filter(e => e.type !== 'transition')
+    .reduce((max, e) => {
+      const ts = e.timestampMs + ('durationMs' in e ? (e.durationMs ?? 0) : 0);
+      return Math.max(max, ts);
+    }, 0);
 
   const timeline = collector.finalize({
     testFile: opts.testFile,
