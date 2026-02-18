@@ -9,6 +9,8 @@ export function msToFrames(ms: number, fps: number): number {
 export interface ResolvedSlideScene {
   timestampMs: number;
   slideDurationMs: number;
+  /** Position in the original events array (for stable sort order). */
+  eventIndex: number;
 }
 
 export interface ResolvedTransition {
@@ -21,6 +23,8 @@ export interface ResolvedTransition {
   hasContentBefore: boolean;
   /** True when a visual action exists after this transition. */
   hasContentAfter: boolean;
+  /** Position in the original events array (for stable sort order). */
+  eventIndex: number;
 }
 
 export interface SlideSegment {
@@ -45,13 +49,18 @@ export interface TransitionSegment {
 
 /**
  * Filter scenes that have a `slide` field and resolve their duration.
+ * Pass allEvents to get correct eventIndex for stable ordering with transitions.
  */
-export function resolveSlideScenes(scenes: SceneEvent[]): ResolvedSlideScene[] {
+export function resolveSlideScenes(
+  scenes: SceneEvent[],
+  allEvents?: readonly TimelineEvent[],
+): ResolvedSlideScene[] {
   return scenes
     .filter(s => s.slide !== undefined)
     .map(s => ({
       timestampMs: s.timestampMs,
       slideDurationMs: s.slide!.duration ?? DEFAULT_SLIDE_DURATION_MS,
+      eventIndex: allEvents ? allEvents.indexOf(s) : 0,
     }));
 }
 
@@ -64,7 +73,8 @@ export function resolveTransitions(events: TimelineEvent[]): ResolvedTransition[
   const result: ResolvedTransition[] = [];
   const actions = events.filter((e): e is ActionEvent => e.type === 'action');
 
-  for (const event of events) {
+  for (let i = 0; i < events.length; i++) {
+    const event = events[i];
     if (event.type !== 'transition') continue;
 
     const lastBefore = findLastAction(actions, event.timestampMs);
@@ -82,6 +92,7 @@ export function resolveTransitions(events: TimelineEvent[]): ResolvedTransition[
         : event.timestampMs,
       hasContentBefore: lastBefore !== null,
       hasContentAfter: firstAfter !== null,
+      eventIndex: i,
     });
   }
 
@@ -105,6 +116,7 @@ interface Insertion {
   sourceTimeMs: number;
   durationMs: number;
   kind: 'slide' | 'transition';
+  eventIndex: number;
 }
 
 function buildSortedInsertions(
@@ -113,13 +125,12 @@ function buildSortedInsertions(
 ): Insertion[] {
   const ins: Insertion[] = [];
   for (const ss of slideScenes) {
-    ins.push({ sourceTimeMs: ss.timestampMs, durationMs: ss.slideDurationMs, kind: 'slide' });
+    ins.push({ sourceTimeMs: ss.timestampMs, durationMs: ss.slideDurationMs, kind: 'slide', eventIndex: ss.eventIndex });
   }
   for (const t of transitions) {
-    ins.push({ sourceTimeMs: t.timestampMs, durationMs: t.transitionDurationMs, kind: 'transition' });
+    ins.push({ sourceTimeMs: t.timestampMs, durationMs: t.transitionDurationMs, kind: 'transition', eventIndex: t.eventIndex });
   }
-  // Slides sort before transitions at the same source time; stable for same-kind ties.
-  ins.sort((a, b) => a.sourceTimeMs - b.sourceTimeMs || (a.kind === b.kind ? 0 : a.kind === 'slide' ? -1 : 1));
+  ins.sort((a, b) => a.sourceTimeMs - b.sourceTimeMs || a.eventIndex - b.eventIndex);
   return ins;
 }
 
@@ -164,14 +175,17 @@ export function totalTransitionDurationMs(transitions: ResolvedTransition[]): nu
 export function computeOutputSegments(
   scenes: SceneEvent[],
   transitions: ResolvedTransition[],
+  allEvents?: readonly TimelineEvent[],
 ): { slides: SlideSegment[]; transitions: TransitionSegment[] } {
-  const slideScenes = resolveSlideScenes(scenes);
+  const slideScenes = resolveSlideScenes(scenes, allEvents);
   const insertions = buildSortedInsertions(slideScenes, transitions);
 
-  // Build queues (same order as sorted insertions) so we pop metadata
-  // in order even when multiple insertions share the same timestamp.
-  const slideQueue = scenes.filter(s => s.slide).sort((a, b) => a.timestampMs - b.timestampMs);
-  const transQueue = [...transitions].sort((a, b) => a.timestampMs - b.timestampMs);
+  // Build queues sorted by eventIndex (matching insertion sort order within each kind).
+  const slideQueue = scenes.filter(s => s.slide);
+  if (allEvents) {
+    slideQueue.sort((a, b) => allEvents.indexOf(a) - allEvents.indexOf(b));
+  }
+  const transQueue = [...transitions].sort((a, b) => a.eventIndex - b.eventIndex);
   let si = 0;
   let ti = 0;
 

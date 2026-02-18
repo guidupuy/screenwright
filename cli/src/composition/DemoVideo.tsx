@@ -31,7 +31,7 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
   const outputTimeMs = (frame / fps) * 1000;
 
   const scenes = timeline.events.filter((e): e is SceneEvent => e.type === 'scene');
-  const slideScenes = resolveSlideScenes(scenes);
+  const slideScenes = resolveSlideScenes(scenes, timeline.events);
   const resolvedTransitions = resolveTransitions(timeline.events);
 
   const hasInsertions = slideScenes.length > 0 || resolvedTransitions.length > 0;
@@ -59,7 +59,7 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
   const { frameManifest, videoFile } = timeline.metadata;
 
   const { slides: slideSegments, transitions: transitionSegments } =
-    computeOutputSegments(scenes, resolvedTransitions);
+    computeOutputSegments(scenes, resolvedTransitions, timeline.events);
 
   function resolveSlideProps(seg: typeof slideSegments[number]) {
     return {

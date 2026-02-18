@@ -20,8 +20,8 @@ function scene(timestampMs: number, title: string, opts?: { description?: string
   };
 }
 
-function ss(timestampMs: number, slideDurationMs: number = DEFAULT_SLIDE_DURATION_MS): ResolvedSlideScene {
-  return { timestampMs, slideDurationMs };
+function ss(timestampMs: number, slideDurationMs: number = DEFAULT_SLIDE_DURATION_MS, eventIndex = 0): ResolvedSlideScene {
+  return { timestampMs, slideDurationMs, eventIndex };
 }
 
 function action(timestampMs: number, settledAtMs?: number): ActionEvent {
@@ -54,8 +54,9 @@ function rt(
   timestampMs: number, durationMs: number, beforeSourceMs: number, afterSourceMs: number,
   type: TransitionEvent['transition'] = 'fade',
   hasContentBefore = true, hasContentAfter = true,
+  eventIndex = 0,
 ): ResolvedTransition {
-  return { timestampMs, transitionDurationMs: durationMs, transition: type, beforeSourceMs, afterSourceMs, hasContentBefore, hasContentAfter };
+  return { timestampMs, transitionDurationMs: durationMs, transition: type, beforeSourceMs, afterSourceMs, hasContentBefore, hasContentAfter, eventIndex };
 }
 
 describe('DEFAULT_SLIDE_DURATION_MS', () => {
@@ -78,8 +79,20 @@ describe('resolveSlideScenes', () => {
     ];
     const result = resolveSlideScenes(scenes);
     expect(result).toEqual([
-      { timestampMs: 0, slideDurationMs: 2000 },
-      { timestampMs: 10000, slideDurationMs: 3000 },
+      { timestampMs: 0, slideDurationMs: 2000, eventIndex: 0 },
+      { timestampMs: 10000, slideDurationMs: 3000, eventIndex: 0 },
+    ]);
+  });
+
+  it('populates eventIndex when allEvents is provided', () => {
+    const s1 = scene(0, 'A', { slide: {} });
+    const s2 = scene(5000, 'B');
+    const s3 = scene(10000, 'C', { slide: { duration: 3000 } });
+    const allEvents: TimelineEvent[] = [s1, s2, s3];
+    const result = resolveSlideScenes([s1, s2, s3], allEvents);
+    expect(result).toEqual([
+      { timestampMs: 0, slideDurationMs: 2000, eventIndex: 0 },
+      { timestampMs: 10000, slideDurationMs: 3000, eventIndex: 2 },
     ]);
   });
 
@@ -108,7 +121,7 @@ describe('resolveTransitions', () => {
     ];
     const result = resolveTransitions(events);
     expect(result).toEqual([
-      { timestampMs: 500, transitionDurationMs: 300, transition: 'fade', beforeSourceMs: 100, afterSourceMs: 800, hasContentBefore: true, hasContentAfter: true },
+      { timestampMs: 500, transitionDurationMs: 300, transition: 'fade', beforeSourceMs: 100, afterSourceMs: 800, hasContentBefore: true, hasContentAfter: true, eventIndex: 1 },
     ]);
   });
 
@@ -206,6 +219,37 @@ describe('totalTransitionDurationMs', () => {
 
   it('returns 0 for empty array', () => {
     expect(totalTransitionDurationMs([])).toBe(0);
+  });
+});
+
+describe('buildSortedInsertions ordering', () => {
+  it('preserves emission order when scenes and transitions share a timestamp', () => {
+    // Simulates: scene(slide) → transition → scene(slide) → transition
+    // all at the same source time (transition no longer consumes source time)
+    const s1 = scene(0, 'Sharing with Spectra', { slide: { brandColor: '#000000', textColor: '#ffffff' } });
+    const t1: TransitionEvent = { type: 'transition', id: 't-0a', timestampMs: 0, transition: 'fade', durationMs: 800 };
+    const s2 = scene(0, 'Sharing a Workbook', { slide: {} });
+    const t2: TransitionEvent = { type: 'transition', id: 't-0b', timestampMs: 0, transition: 'fade', durationMs: 500 };
+    const allEvents: TimelineEvent[] = [s1, t1, s2, t2];
+
+    const result = computeOutputSegments([s1, s2], resolveTransitions(allEvents), allEvents);
+
+    // Expected order: Slide A → Fade 800 → Slide B → Fade 500
+    expect(result.slides[0].sceneTitle).toBe('Sharing with Spectra');
+    expect(result.slides[0].slideStartMs).toBe(0);
+    expect(result.slides[0].slideEndMs).toBe(2000);
+
+    expect(result.transitions[0].durationMs).toBe(800);
+    expect(result.transitions[0].outputStartMs).toBe(2000);
+    expect(result.transitions[0].outputEndMs).toBe(2800);
+
+    expect(result.slides[1].sceneTitle).toBe('Sharing a Workbook');
+    expect(result.slides[1].slideStartMs).toBe(2800);
+    expect(result.slides[1].slideEndMs).toBe(4800);
+
+    expect(result.transitions[1].durationMs).toBe(500);
+    expect(result.transitions[1].outputStartMs).toBe(4800);
+    expect(result.transitions[1].outputEndMs).toBe(5300);
   });
 });
 

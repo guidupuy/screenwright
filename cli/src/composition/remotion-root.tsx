@@ -40,7 +40,7 @@ export const RemotionRoot: React.FC = () => {
         calculateMetadata={({ props }) => {
           const fps = 30;
           const scenes = props.timeline.events.filter((e): e is SceneEvent => e.type === 'scene');
-          const slideScenes = resolveSlideScenes(scenes);
+          const slideScenes = resolveSlideScenes(scenes, props.timeline.events);
           const resolvedTransitions = resolveTransitions(props.timeline.events);
           const totalMs = props.timeline.metadata.videoDurationMs
             + totalSlideDurationMs(slideScenes)
