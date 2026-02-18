@@ -393,6 +393,21 @@ describe('computeOutputSegments', () => {
     expect(result.transitions[0].adjacentSlideBefore).toBeNull();
     expect(result.transitions[0].adjacentSlideAfter).toBeNull();
   });
+
+  it('does not link adjacency when slide and transition have different source times', () => {
+    // Slide at t=0, then video content, then transition at t=5000, then slide at t=5000
+    const s1 = scene(0, 'Intro', { slide: {} });
+    const a1 = action(500);
+    const t1: TransitionEvent = { type: 'transition', id: 't-5000', timestampMs: 5000, transition: 'fade', durationMs: 500 };
+    const s2 = scene(5000, 'Feature', { slide: {} });
+    const allEvents: TimelineEvent[] = [s1, a1, t1, s2];
+    const result = computeOutputSegments([s1, s2], resolveTransitions(allEvents), allEvents);
+
+    // Slide 'Intro' at sourceTime=0, transition at sourceTime=5000 — NOT adjacent
+    expect(result.transitions[0].adjacentSlideBefore).toBeNull();
+    // Slide 'Feature' at sourceTime=5000, transition at sourceTime=5000 — adjacent
+    expect(result.transitions[0].adjacentSlideAfter).toBe(1);
+  });
 });
 
 describe('sourceTimeMs', () => {

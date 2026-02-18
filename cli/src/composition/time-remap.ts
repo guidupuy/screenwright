@@ -243,14 +243,17 @@ export function computeOutputSegments(
     accumulated += ins.durationMs;
   }
 
-  // Second pass: link transitions to adjacent slides by position.
+  // Second pass: link transitions to adjacent slides when they share
+  // the same source timestamp (no video content gap between them).
   for (let k = 0; k < segOrder.length; k++) {
     if (segOrder[k].kind !== 'transition') continue;
     const seg = transSegs[segOrder[k].index];
-    if (k > 0 && segOrder[k - 1].kind === 'slide') {
+    if (k > 0 && segOrder[k - 1].kind === 'slide'
+        && insertions[k].sourceTimeMs === insertions[k - 1].sourceTimeMs) {
       seg.adjacentSlideBefore = segOrder[k - 1].index;
     }
-    if (k < segOrder.length - 1 && segOrder[k + 1].kind === 'slide') {
+    if (k < segOrder.length - 1 && segOrder[k + 1].kind === 'slide'
+        && insertions[k].sourceTimeMs === insertions[k + 1].sourceTimeMs) {
       seg.adjacentSlideAfter = segOrder[k + 1].index;
     }
   }
