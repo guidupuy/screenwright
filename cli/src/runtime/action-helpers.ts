@@ -100,7 +100,6 @@ export function createHelpers(page: Page, collector: TimelineCollector): Screenw
     },
 
     async navigate(url, actionOpts) {
-      if (actionOpts?.narration) await emitNarration(actionOpts.narration);
       const startMs = collector.elapsed();
       try {
         await page.goto(url, { waitUntil: 'domcontentloaded' });
@@ -116,6 +115,7 @@ export function createHelpers(page: Page, collector: TimelineCollector): Screenw
       } catch (err) {
         throw actionError('navigate', url, err);
       }
+      if (actionOpts?.narration) await emitNarration(actionOpts.narration);
     },
 
     async click(selector, actionOpts) {

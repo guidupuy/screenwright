@@ -192,6 +192,22 @@ describe('createHelpers', () => {
     expect((events[0] as any).action).toBe('navigate');
   });
 
+  it('navigate() with narration emits narration after action', async () => {
+    const page = mockPage();
+    const collector = new TimelineCollector();
+    collector.start();
+    const sw = createHelpers(page, collector);
+
+    await sw.navigate('http://localhost:3000', { narration: 'Go to the page' });
+    const events = collector.getEvents();
+    const types = events.map(e => e.type);
+
+    // navigate emits action first, then narration + wait
+    expect(types[0]).toBe('action');
+    expect(types[1]).toBe('narration');
+    expect(types[2]).toBe('wait');
+  });
+
   it('wait() emits a pacing wait event and waits real time', async () => {
     const page = mockPage();
     const collector = new TimelineCollector();
