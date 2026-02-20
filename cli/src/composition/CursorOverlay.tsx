@@ -37,9 +37,9 @@ export const CursorOverlay: React.FC<Props> = ({ cursorEvents, clickEvents, fps 
 
   const { x, y } = getCursorPosition(cursorEvents, timeMs);
 
-  // Show pointer cursor when approaching a click (within 200ms before)
+  // Show pointer cursor during the dwell (500ms before click) and click itself
   const isPointer = clickEvents.some(
-    e => timeMs >= e.timestampMs - 200 && timeMs <= e.timestampMs + e.durationMs
+    e => timeMs >= e.timestampMs - 500 && timeMs <= e.timestampMs + e.durationMs
   );
 
   // Click ripple effect

@@ -39,6 +39,8 @@ export interface RecordingContext {
   addTransitionMarker(marker: TransitionMarker): void;
   popNarration(): PregeneratedNarration;
   currentTimeMs(): number;
+  /** Start the capture loop if it hasn't started yet. No-op after first call. */
+  ensureCaptureStarted(): void;
   readonly manifest: ManifestEntry[];
   transitionPending: boolean;
 }
@@ -47,6 +49,7 @@ const DEFAULT_SLIDE_DURATION_MS = 2000;
 const CHAR_TYPE_DELAY_MS = 30;
 const CURSOR_MOVE_MIN_MS = 200;
 const CURSOR_MOVE_MAX_MS = 800;
+const CURSOR_DWELL_MS = 500;
 const FPS = 30;
 
 export function calculateMoveDuration(fromX: number, fromY: number, toX: number, toY: number): number {
@@ -68,19 +71,21 @@ function escapeJs(s: string): string {
 async function preloadFont(page: Page, fontFamily: string): Promise<void> {
   const encoded = encodeURIComponent(fontFamily);
   const escaped = escapeJs(fontFamily);
-  // Single evaluate: inject stylesheet, wait for it to load (so @font-face
-  // rules are registered), then wait for the actual font file to download.
+  // Don't request a weight range — non-variable fonts (e.g. Lobster) return
+  // HTTP 400 for `:wght@100..900`.  Omitting it returns all available weights.
+  const fontUrl = `https://fonts.googleapis.com/css2?family=${encoded}&display=swap`;
+  // Two-pronged approach: addStyleTag works on real pages (survives HTML
+  // parsing) but can't download font files on about:blank.  The manual
+  // evaluate path handles about:blank.  Running both is harmless — the
+  // browser deduplicates the actual network requests.
+  await page.addStyleTag({ url: fontUrl }).catch(() => {});
   await page.evaluate(`
     (async () => {
       try {
-        var link = document.getElementById('${SLIDE_OVERLAY_ID}_font');
-        if (!link) {
-          link = document.createElement('link');
-          link.id = '${SLIDE_OVERLAY_ID}_font';
-          link.rel = 'stylesheet';
-          link.href = 'https://fonts.googleapis.com/css2?family=${encoded}&display=swap';
-          document.head.appendChild(link);
-        }
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = '${fontUrl}';
+        document.head.appendChild(link);
         if (!link.sheet) {
           await Promise.race([
             new Promise(function(ok, fail) { link.onload = ok; link.onerror = fail; }),
@@ -88,7 +93,7 @@ async function preloadFont(page: Page, fontFamily: string): Promise<void> {
           ]);
         }
         await Promise.race([
-          document.fonts.load('700 64px "${escaped}"'),
+          document.fonts.load('64px "${escaped}"'),
           new Promise(function(r) { setTimeout(r, 3000); }),
         ]);
       } catch {}
@@ -148,11 +153,11 @@ async function injectSlideOverlay(
 }
 
 async function removeSlideOverlay(page: Page): Promise<void> {
+  // Only remove the overlay div — keep the font <link> so subsequent
+  // slides reuse the already-loaded @font-face rules instantly.
   await page.evaluate(`
     var el = document.getElementById('${SLIDE_OVERLAY_ID}');
     if (el) el.remove();
-    var fontLink = document.getElementById('${SLIDE_OVERLAY_ID}_font');
-    if (fontLink) fontLink.remove();
   `).catch(() => {});
 }
 
@@ -259,6 +264,7 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
         const slideDurationMs = slide.duration ?? DEFAULT_SLIDE_DURATION_MS;
         const manifestLenBefore = ctx.manifest.length;
         await injectSlideOverlay(page, title, description, slide, branding);
+        ctx.ensureCaptureStarted();
         await page.waitForTimeout(slideDurationMs);
 
         // Take an explicit screenshot of the slide for transition images.
@@ -295,6 +301,7 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
       const startMs = ctx.currentTimeMs();
       try {
         await page.goto(url, { waitUntil: 'domcontentloaded' });
+        ctx.ensureCaptureStarted();
         collector.emit({
           type: 'action',
           action: 'navigate',
@@ -319,9 +326,11 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
       if (narration) emitNarrationEvent(narration);
 
       try {
+        ctx.ensureCaptureStarted();
         await resolvePendingTransition();
         const center = await resolveCenter(selector);
         await moveCursorTo(center.x, center.y);
+        await page.waitForTimeout(CURSOR_DWELL_MS);
         const locator = page.locator(selector).first();
         const box = await locator.boundingBox();
         const startMs = ctx.currentTimeMs();
@@ -348,9 +357,11 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
       if (narration) emitNarrationEvent(narration);
 
       try {
+        ctx.ensureCaptureStarted();
         await resolvePendingTransition();
         const center = await resolveCenter(selector);
         await moveCursorTo(center.x, center.y);
+        await page.waitForTimeout(CURSOR_DWELL_MS);
         const locator = page.locator(selector).first();
         const box = await locator.boundingBox();
         const startMs = ctx.currentTimeMs();
@@ -377,6 +388,7 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
       if (narration) emitNarrationEvent(narration);
 
       try {
+        ctx.ensureCaptureStarted();
         await resolvePendingTransition();
         const center = await resolveCenter(selector);
         await moveCursorTo(center.x, center.y);
@@ -410,6 +422,7 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
       if (narration) emitNarrationEvent(narration);
 
       try {
+        ctx.ensureCaptureStarted();
         await resolvePendingTransition();
         const center = await resolveCenter(selector);
         await moveCursorTo(center.x, center.y);
@@ -438,6 +451,7 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
       const narStartMs = narration ? ctx.currentTimeMs() : 0;
       if (narration) emitNarrationEvent(narration);
 
+      ctx.ensureCaptureStarted();
       await resolvePendingTransition();
       const startMs = ctx.currentTimeMs();
       try {
@@ -459,12 +473,14 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
 
     async wait(ms) {
       clearSlideState();
+      ctx.ensureCaptureStarted();
       collector.emit({ type: 'wait', timestampMs: ctx.currentTimeMs(), durationMs: ms, reason: 'pacing' as const });
       await page.waitForTimeout(ms);
     },
 
     async narrate(text) {
       clearSlideState();
+      ctx.ensureCaptureStarted();
       const narration = ctx.popNarration();
       emitNarrationEvent(narration);
       await page.waitForTimeout(narration.durationMs);

@@ -47,12 +47,13 @@ export async function runScenario(scenario: ScenarioFn, opts: RunOptions): Promi
   const context = await browser.newContext({
     viewport,
     deviceScaleFactor: DPR,
+    bypassCSP: true,
     colorScheme: opts.colorScheme ?? 'light',
     locale: opts.locale ?? 'en-US',
     timezoneId: opts.timezoneId ?? 'America/New_York',
   });
 
-  // Hide the native cursor so only the Screenwright overlay cursor appears
+  // Hide the native cursor so only the Screenwright overlay cursor appears.
   await context.addInitScript(`
     const s = document.createElement('style');
     s.textContent = '*, *::before, *::after { cursor: none !important; }';
@@ -137,11 +138,16 @@ export async function runScenario(scenario: ScenarioFn, opts: RunOptions): Promi
     return virtualFrameIndex * FRAME_INTERVAL_MS;
   }
 
+  function ensureCaptureStarted(): void {
+    if (!captureRunning) resumeCapture();
+  }
+
   const ctx: RecordingContext = {
     captureTransitionFrame,
     addTransitionMarker,
     popNarration,
     currentTimeMs,
+    ensureCaptureStarted,
     get manifest() { return manifest; },
     transitionPending: false,
   };
@@ -149,9 +155,6 @@ export async function runScenario(scenario: ScenarioFn, opts: RunOptions): Promi
   const sw = createHelpers(page, collector, ctx, opts.branding);
 
   try {
-    // Start capture loop
-    resumeCapture();
-
     await scenario(sw);
 
     // Stop capture loop and flush

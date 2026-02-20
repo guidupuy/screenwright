@@ -42,6 +42,7 @@ function mockRecordingContext(narrations: { text: string; audioFile: string; dur
       return narrations[narrationIdx++];
     }),
     currentTimeMs: vi.fn().mockImplementation(() => virtualFrameIndex * (1000 / 30)),
+    ensureCaptureStarted: vi.fn(),
     get manifest() { return manifest; },
     transitionPending: false,
   };
