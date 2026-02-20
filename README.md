@@ -157,7 +157,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
 | Method | Description |
 |--------|-------------|
 | `sw.scene(title)` | Mark a scene boundary (no slide) |
-| `sw.scene(title, { slide?: { duration?, brandColor?, textColor?, fontFamily?, titleFontSize? } })` | Scene with optional transition slide (pass `{ slide: {} }` for defaults) |
+| `sw.scene(title, { slide?: { duration?, brandColor?, textColor?, fontFamily?, titleFontSize? } })` | Scene with optional transition slide. Pass `{ slide: {} }` for defaults (2000ms duration / config branding) |
 | `sw.navigate(url, { narration? })` | Navigate to URL |
 | `sw.click(selector, { narration? })` | Click an element |
 | `sw.fill(selector, value, { narration? })` | Type into an input (character by character) |

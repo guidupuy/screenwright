@@ -222,7 +222,21 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
   async function resolveCenter(selector: string): Promise<{ x: number; y: number }> {
     const locator = page.locator(selector).first();
     await locator.waitFor({ state: 'visible', timeout: 10000 });
-    const box = await locator.boundingBox();
+    // Poll until the bounding box stabilizes — handles CSS animations on
+    // dropdowns, dialogs, etc. that are still in-flight when the element
+    // first becomes visible.
+    let box = await locator.boundingBox();
+    for (let i = 0; i < 10; i++) {
+      await page.waitForTimeout(50);
+      const next = await locator.boundingBox();
+      if (box && next
+        && Math.abs(next.x - box.x) < 1
+        && Math.abs(next.y - box.y) < 1) {
+        box = next;
+        break;
+      }
+      box = next;
+    }
     if (!box) return { x: lastX, y: lastY };
     return { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) };
   }
