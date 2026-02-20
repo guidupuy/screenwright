@@ -71,13 +71,20 @@ export async function runScenario(scenario: ScenarioFn, opts: RunOptions): Promi
   // Virtual clock: each frame = exactly 1000/30 ms
   let virtualFrameIndex = 0;
   let frameFileCounter = 0;
+  let transitionFrameCounter = 0;
 
   // Capture loop state
   let captureRunning = false;
   let pendingScreenshot: Promise<void> = Promise.resolve();
 
+  // Capture loop instrumentation
+  const screenshotTimings: number[] = [];
+  let captureLoopStart = 0;
+  let captureFailures = 0;
+
   async function runCaptureLoop() {
     captureRunning = true;
+    if (!captureLoopStart) captureLoopStart = performance.now();
     while (captureRunning) {
       const start = performance.now();
       frameFileCounter++;
@@ -86,8 +93,9 @@ export async function runScenario(scenario: ScenarioFn, opts: RunOptions): Promi
         await page.screenshot({ path: join(framesDir, filename), type: 'jpeg', quality: 90 });
         manifest.push({ type: 'frame', file: `frames/${filename}` });
         virtualFrameIndex++;
+        screenshotTimings.push(performance.now() - start);
       } catch {
-        // Page may not be ready or is closing
+        captureFailures++;
       }
       const elapsed = performance.now() - start;
       await sleep(FRAME_INTERVAL_MS - elapsed);
@@ -105,20 +113,12 @@ export async function runScenario(scenario: ScenarioFn, opts: RunOptions): Promi
     }
   }
 
-  async function captureOneFrame(): Promise<string> {
-    frameFileCounter++;
-    const filename = `frame-${String(frameFileCounter).padStart(6, '0')}.jpg`;
+  /** Explicit screenshot for transition images — not in the manifest, no virtual clock advance. */
+  async function captureTransitionFrame(): Promise<string> {
+    transitionFrameCounter++;
+    const filename = `transition-${String(transitionFrameCounter).padStart(4, '0')}.jpg`;
     await page.screenshot({ path: join(framesDir, filename), type: 'jpeg', quality: 90 });
-    const file = `frames/${filename}`;
-    manifest.push({ type: 'frame', file });
-    virtualFrameIndex++;
-    return file;
-  }
-
-  function addHold(file: string, count: number): void {
-    if (count <= 0) return;
-    manifest.push({ type: 'hold', file, count });
-    virtualFrameIndex += count;
+    return `frames/${filename}`;
   }
 
   function addTransitionMarker(marker: TransitionMarker): void {
@@ -138,20 +138,13 @@ export async function runScenario(scenario: ScenarioFn, opts: RunOptions): Promi
   }
 
   const ctx: RecordingContext = {
-    pauseCapture,
-    resumeCapture,
-    captureOneFrame,
-    addHold,
+    captureTransitionFrame,
     addTransitionMarker,
     popNarration,
     currentTimeMs,
     get manifest() { return manifest; },
     transitionPending: false,
-    get narrationCount() { return narrationConsumed; },
   };
-
-  // Expose transitionMarkers for the back-to-back transition warning hack
-  (ctx as any)._transitionMarkers = transitionMarkers;
 
   const sw = createHelpers(page, collector, ctx, opts.branding);
 
@@ -166,9 +159,31 @@ export async function runScenario(scenario: ScenarioFn, opts: RunOptions): Promi
 
     // Take one final frame
     try {
-      await captureOneFrame();
+      frameFileCounter++;
+      const filename = `frame-${String(frameFileCounter).padStart(6, '0')}.jpg`;
+      await page.screenshot({ path: join(framesDir, filename), type: 'jpeg', quality: 90 });
+      manifest.push({ type: 'frame', file: `frames/${filename}` });
+      virtualFrameIndex++;
     } catch {
       // Page may already be closing
+    }
+
+    // Capture loop stats + drift detection
+    if (screenshotTimings.length > 0) {
+      const wallMs = performance.now() - captureLoopStart;
+      const actualFps = screenshotTimings.length / wallMs * 1000;
+      const targetFps = 1000 / FRAME_INTERVAL_MS;
+      const driftThreshold = 0.85; // warn if actual < 85% of target
+
+      if (actualFps < targetFps * driftThreshold) {
+        const suggestedFps = Math.floor(actualFps);
+        console.warn(
+          `\n⚠ Capture loop averaged ${actualFps.toFixed(1)}fps (target ${targetFps}fps). ` +
+          `Video timing may be inaccurate.\n` +
+          `  Consider setting fps: ${suggestedFps} in your screenwright config, ` +
+          `or running on a faster machine.\n`,
+        );
+      }
     }
 
     // Warn about trailing transition

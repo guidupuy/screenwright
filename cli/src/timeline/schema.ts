@@ -22,7 +22,7 @@ const actionEventSchema = z.object({
   type: z.literal('action'),
   id: z.string(),
   timestampMs: z.number().nonnegative(),
-  action: z.enum(['click', 'fill', 'hover', 'select', 'press', 'navigate']),
+  action: z.enum(['click', 'dblclick', 'fill', 'hover', 'press', 'navigate']),
   selector: z.string(),
   value: z.string().optional(),
   durationMs: z.number().nonnegative(),
@@ -81,6 +81,9 @@ const transitionMarkerSchema = z.object({
   afterEntryIndex: z.number().int().nonnegative(),
   transition: z.enum(transitionTypes),
   durationFrames: z.number().int().positive(),
+  beforeFile: z.string().optional(),
+  afterFile: z.string().optional(),
+  consumedFrames: z.number().int().positive().optional(),
 });
 
 export const timelineSchema = z.object({

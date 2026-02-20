@@ -54,6 +54,7 @@ export async function extractNarrations(scenarioFn: ScenarioFn): Promise<string[
     page: noopPageProxy(),
     navigate: async (_url, opts?) => { if (opts?.narration) narrations.push(opts.narration); },
     click: async (_sel, opts?) => { if (opts?.narration) narrations.push(opts.narration); },
+    dblclick: async (_sel, opts?) => { if (opts?.narration) narrations.push(opts.narration); },
     fill: async (_sel, _v, opts?) => { if (opts?.narration) narrations.push(opts.narration); },
     hover: async (_sel, opts?) => { if (opts?.narration) narrations.push(opts.narration); },
     press: async (_key, opts?) => { if (opts?.narration) narrations.push(opts.narration); },

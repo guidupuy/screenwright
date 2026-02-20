@@ -31,17 +31,8 @@ function mockRecordingContext(narrations: { text: string; audioFile: string; dur
   let narrationIdx = 0;
 
   const ctx: RecordingContext = {
-    pauseCapture: vi.fn().mockResolvedValue(undefined),
-    resumeCapture: vi.fn(),
-    captureOneFrame: vi.fn().mockImplementation(async () => {
-      const file = `frames/frame-${String(manifest.length + 1).padStart(6, '0')}.jpg`;
-      manifest.push({ type: 'frame', file });
-      virtualFrameIndex++;
-      return file;
-    }),
-    addHold: vi.fn().mockImplementation((file: string, count: number) => {
-      manifest.push({ type: 'hold', file, count });
-      virtualFrameIndex += count;
+    captureTransitionFrame: vi.fn().mockImplementation(async () => {
+      return `frames/transition-${String(Math.random()).slice(2, 6)}.jpg`;
     }),
     addTransitionMarker: vi.fn().mockImplementation((marker: TransitionMarker) => {
       markers.push(marker);
@@ -53,9 +44,7 @@ function mockRecordingContext(narrations: { text: string; audioFile: string; dur
     currentTimeMs: vi.fn().mockImplementation(() => virtualFrameIndex * (1000 / 30)),
     get manifest() { return manifest; },
     transitionPending: false,
-    get narrationCount() { return narrationIdx; },
   };
-  (ctx as any)._transitionMarkers = markers;
   return ctx;
 }
 
@@ -76,6 +65,8 @@ describe('calculateMoveDuration', () => {
 });
 
 describe('createHelpers', () => {
+  // Capture loop runs continuously — helpers never pause/resume it.
+
   it('scene() without slide emits scene event only', async () => {
     const page = mockPage();
     const collector = new TimelineCollector();
@@ -87,9 +78,7 @@ describe('createHelpers', () => {
 
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe('scene');
-    const ev = events[0] as any;
-    expect(ev.title).toBe('Intro');
-    expect(ctx.pauseCapture).not.toHaveBeenCalled();
+    expect((events[0] as any).title).toBe('Intro');
   });
 
   it('scene() with string description emits scene event', async () => {
@@ -107,34 +96,18 @@ describe('createHelpers', () => {
     expect(ev.description).toBe('The beginning');
   });
 
-  it('scene() with slide pauses capture and injects DOM overlay', async () => {
+  it('scene() with slide injects DOM overlay and sleeps for duration', async () => {
     const page = mockPage();
     const collector = new TimelineCollector();
     const ctx = mockRecordingContext();
     const sw = createHelpers(page, collector, ctx);
 
-    await sw.scene('Intro', { slide: { brandColor: '#4F46E5' } });
+    await sw.scene('Intro', { slide: { brandColor: '#4F46E5', duration: 3000 } });
 
-    expect(ctx.pauseCapture).toHaveBeenCalled();
-    expect(ctx.captureOneFrame).toHaveBeenCalled();
-    // Scene with slide does NOT resume capture — next action does
-    expect(ctx.resumeCapture).not.toHaveBeenCalled();
-    // DOM injection via page.evaluate
+    // DOM injection + removal via page.evaluate
     expect(page.evaluate).toHaveBeenCalled();
-  });
-
-  it('scene() with slide adds hold for duration', async () => {
-    const page = mockPage();
-    const collector = new TimelineCollector();
-    const ctx = mockRecordingContext();
-    const sw = createHelpers(page, collector, ctx);
-
-    await sw.scene('Intro', { slide: { duration: 3000 } });
-
-    // 3000ms at 30fps = 90 frames. captureOneFrame adds 1, hold adds 89.
-    expect(ctx.addHold).toHaveBeenCalled();
-    const holdCall = (ctx.addHold as any).mock.calls[0];
-    expect(holdCall[1]).toBe(89); // 90 - 1 = 89
+    // Sleeps for slide duration — capture loop records frames throughout
+    expect(page.waitForTimeout).toHaveBeenCalledWith(3000);
   });
 
   it('click() emits cursor_target then action events', async () => {
@@ -152,11 +125,11 @@ describe('createHelpers', () => {
     expect(types.indexOf('cursor_target')).toBeLessThan(types.indexOf('action'));
   });
 
-  it('click() with narration emits narration first', async () => {
+  it('click() with narration emits narration at start, sleeps for remainder', async () => {
     const page = mockPage();
     const collector = new TimelineCollector();
     const ctx = mockRecordingContext([
-      { text: 'Click the button', audioFile: '/tmp/n0.wav', durationMs: 1000 },
+      { text: 'Click the button', audioFile: '/tmp/n0.wav', durationMs: 5000 },
     ]);
     const sw = createHelpers(page, collector, ctx);
 
@@ -164,9 +137,12 @@ describe('createHelpers', () => {
     const events = collector.getEvents();
     const types = events.map(e => e.type);
 
+    // Narration emitted at start (concurrent with action)
     expect(types[0]).toBe('narration');
     expect(types).toContain('cursor_target');
     expect(types).toContain('action');
+    // Sleeps for remaining narration time after action settles
+    expect(page.waitForTimeout).toHaveBeenCalled();
   });
 
   it('fill() types characters with fixed delay', async () => {
@@ -196,7 +172,7 @@ describe('createHelpers', () => {
     expect((events[0] as any).action).toBe('navigate');
   });
 
-  it('navigate() with narration emits narration after action', async () => {
+  it('navigate() with narration emits narration concurrently then action', async () => {
     const page = mockPage();
     const collector = new TimelineCollector();
     const ctx = mockRecordingContext([
@@ -208,12 +184,11 @@ describe('createHelpers', () => {
     const events = collector.getEvents();
     const types = events.map(e => e.type);
 
-    // navigate emits narration first (from emitNarration), then action
     expect(types[0]).toBe('narration');
     expect(types).toContain('action');
   });
 
-  it('wait() emits a pacing wait event and waits real time', async () => {
+  it('wait() emits wait event and sleeps', async () => {
     const page = mockPage();
     const collector = new TimelineCollector();
     const ctx = mockRecordingContext();
@@ -261,7 +236,7 @@ describe('createHelpers', () => {
     expect(second.fromY).toBe(firstTarget.toY);
   });
 
-  it('narrate() pauses capture, pops from queue, captures frame and holds', async () => {
+  it('narrate() emits narration event and sleeps for duration', async () => {
     const page = mockPage();
     const collector = new TimelineCollector();
     const ctx = mockRecordingContext([
@@ -271,11 +246,8 @@ describe('createHelpers', () => {
 
     await sw.narrate('Test narration');
 
-    expect(ctx.pauseCapture).toHaveBeenCalled();
     expect(ctx.popNarration).toHaveBeenCalled();
-    expect(ctx.captureOneFrame).toHaveBeenCalled();
-    expect(ctx.addHold).toHaveBeenCalled();
-    expect(ctx.resumeCapture).toHaveBeenCalled();
+    expect(page.waitForTimeout).toHaveBeenCalledWith(2000);
 
     const narrationEvent = collector.getEvents().find(e => e.type === 'narration') as any;
     expect(narrationEvent.text).toBe('Test narration');
@@ -283,7 +255,7 @@ describe('createHelpers', () => {
     expect(narrationEvent.audioDurationMs).toBe(2000);
   });
 
-  it('transition() sets transitionPending and pauses capture', async () => {
+  it('transition() adds marker at current manifest position', async () => {
     const page = mockPage();
     const collector = new TimelineCollector();
     const ctx = mockRecordingContext();
@@ -291,9 +263,7 @@ describe('createHelpers', () => {
 
     await sw.transition();
 
-    expect(ctx.pauseCapture).toHaveBeenCalled();
     expect(ctx.addTransitionMarker).toHaveBeenCalled();
-    expect(ctx.transitionPending).toBe(true);
   });
 
   it('transition() passes through custom type and duration', async () => {
@@ -336,63 +306,17 @@ describe('createHelpers', () => {
     await expect(sw.transition({ duration: NaN })).rejects.toThrow('positive number');
   });
 
-  it('transition() warns on back-to-back calls', async () => {
-    const page = mockPage();
-    const collector = new TimelineCollector();
-    const ctx = mockRecordingContext();
-    const sw = createHelpers(page, collector, ctx);
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    await sw.transition();
-    expect(warnSpy).not.toHaveBeenCalled();
-
-    await sw.transition({ type: 'wipe' });
-    expect(warnSpy).toHaveBeenCalledOnce();
-
-    warnSpy.mockRestore();
-  });
-
-  it('click() resolves pending transition', async () => {
+  it('hover() emits cursor_target and action events', async () => {
     const page = mockPage();
     const collector = new TimelineCollector();
     const ctx = mockRecordingContext();
     const sw = createHelpers(page, collector, ctx);
 
-    await sw.transition();
-    expect(ctx.transitionPending).toBe(true);
+    await sw.hover('.menu');
+    const types = collector.getEvents().map(e => e.type);
 
-    await sw.click('.btn');
-    expect(ctx.transitionPending).toBe(false);
-    // captureOneFrame called: once for transition resolution
-    expect(ctx.captureOneFrame).toHaveBeenCalled();
-    expect(ctx.resumeCapture).toHaveBeenCalled();
-  });
-
-  it('navigate() resolves pending transition', async () => {
-    const page = mockPage();
-    const collector = new TimelineCollector();
-    const ctx = mockRecordingContext();
-    const sw = createHelpers(page, collector, ctx);
-
-    await sw.transition();
-    expect(ctx.transitionPending).toBe(true);
-
-    await sw.navigate('http://localhost:3000');
-    expect(ctx.transitionPending).toBe(false);
-  });
-
-  it('wait() during transition captures and holds', async () => {
-    const page = mockPage();
-    const collector = new TimelineCollector();
-    const ctx = mockRecordingContext();
-    const sw = createHelpers(page, collector, ctx);
-
-    ctx.transitionPending = true;
-    await sw.wait(500);
-
-    expect(page.waitForTimeout).toHaveBeenCalledWith(500);
-    expect(ctx.captureOneFrame).toHaveBeenCalled();
-    // wait does NOT resolve the transition — transitionPending stays true
-    expect(ctx.transitionPending).toBe(true);
+    expect(types).toContain('cursor_target');
+    expect(types).toContain('action');
+    expect((collector.getEvents().find(e => e.type === 'action') as any).action).toBe('hover');
   });
 });

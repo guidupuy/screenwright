@@ -64,7 +64,7 @@ export function totalOutputFrames(manifest: ManifestEntry[], transitions: Transi
   let consumed = 0;
   for (const t of transitions) {
     inserted += t.durationFrames;
-    consumed += 1; // each transition consumes the first expanded frame of the next entry
+    consumed += t.consumedFrames ?? 1;
   }
   return source + inserted - consumed;
 }
@@ -105,18 +105,16 @@ export function resolveOutputFrame(
 
     if (outputFrame >= transStart && outputFrame <= transEnd) {
       const progress = (outputFrame - transStart + 1) / t.durationFrames;
-      const beforeFile = sourceFrameImage(manifest, sourceS);
-      // "after" is the first frame of the next manifest entry
+      const beforeFile = t.beforeFile ?? sourceFrameImage(manifest, sourceS);
       const afterEntryIdx = t.afterEntryIndex + 1;
-      const afterFile = afterEntryIdx < manifest.length
-        ? manifest[afterEntryIdx].file
-        : manifest[manifest.length - 1].file;
+      const afterFile = t.afterFile
+        ?? (afterEntryIdx < manifest.length ? manifest[afterEntryIdx].file : manifest[manifest.length - 1].file);
       return { type: 'transition', beforeFile, afterFile, progress, transition: t.transition };
     }
 
     // Past this transition: update offset
-    // We inserted durationFrames and consumed 1 source frame
-    offset += t.durationFrames - 1;
+    const consumed = t.consumedFrames ?? 1;
+    offset += t.durationFrames - consumed;
   }
 
   // Map output frame back to source frame
@@ -145,7 +143,8 @@ export function remapEventsForOutput<T extends TimelineEvent>(
       const transitionSourceMs = sourceS * FRAME_MS;
 
       if (event.timestampMs > transitionSourceMs) {
-        offsetMs += (t.durationFrames - 1) * FRAME_MS;
+        const consumed = t.consumedFrames ?? 1;
+        offsetMs += (t.durationFrames - consumed) * FRAME_MS;
       }
     }
     if (offsetMs === 0) return event;

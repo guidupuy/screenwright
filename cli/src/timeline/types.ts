@@ -6,6 +6,17 @@ export interface TransitionMarker {
   afterEntryIndex: number;
   transition: TransitionType;
   durationFrames: number;
+  /** Explicit image for the "before" side of the transition. */
+  beforeFile?: string;
+  /** Explicit image for the "after" side of the transition. */
+  afterFile?: string;
+  /**
+   * Number of source frames consumed (skipped) by the transition.
+   * Defaults to 1 when not set. Slide-to-slide transitions set this
+   * higher to skip junk frames captured between overlay removal and
+   * the next overlay injection.
+   */
+  consumedFrames?: number;
 }
 
 export interface Timeline {
@@ -54,7 +65,7 @@ export interface SceneEvent {
   slide?: SceneSlideConfig;
 }
 
-export type ActionType = 'click' | 'fill' | 'hover' | 'select' | 'press' | 'navigate';
+export type ActionType = 'click' | 'dblclick' | 'fill' | 'hover' | 'press' | 'navigate';
 
 export interface ActionEvent {
   type: 'action';

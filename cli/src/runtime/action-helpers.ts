@@ -23,6 +23,7 @@ export interface ScreenwrightHelpers {
   scene(title: string, descriptionOrOptions?: string | SceneOptions): Promise<void>;
   navigate(url: string, opts?: ActionOptions): Promise<void>;
   click(selector: string, opts?: ActionOptions): Promise<void>;
+  dblclick(selector: string, opts?: ActionOptions): Promise<void>;
   fill(selector: string, value: string, opts?: ActionOptions): Promise<void>;
   hover(selector: string, opts?: ActionOptions): Promise<void>;
   press(key: string, opts?: ActionOptions): Promise<void>;
@@ -32,16 +33,14 @@ export interface ScreenwrightHelpers {
 }
 
 export interface RecordingContext {
-  pauseCapture(): Promise<void>;
-  resumeCapture(): void;
-  captureOneFrame(): Promise<string>;
-  addHold(file: string, count: number): void;
+  /** Take an explicit screenshot for transition before/after images.
+   *  Does NOT push to the manifest or advance the virtual clock. */
+  captureTransitionFrame(): Promise<string>;
   addTransitionMarker(marker: TransitionMarker): void;
   popNarration(): PregeneratedNarration;
   currentTimeMs(): number;
   readonly manifest: ManifestEntry[];
   transitionPending: boolean;
-  readonly narrationCount: number;
 }
 
 const DEFAULT_SLIDE_DURATION_MS = 2000;
@@ -65,6 +64,38 @@ function escapeJs(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
 }
 
+/** Preload a Google Font so it's cached before the overlay becomes visible. */
+async function preloadFont(page: Page, fontFamily: string): Promise<void> {
+  const encoded = encodeURIComponent(fontFamily);
+  const escaped = escapeJs(fontFamily);
+  // Single evaluate: inject stylesheet, wait for it to load (so @font-face
+  // rules are registered), then wait for the actual font file to download.
+  await page.evaluate(`
+    (async () => {
+      try {
+        var link = document.getElementById('${SLIDE_OVERLAY_ID}_font');
+        if (!link) {
+          link = document.createElement('link');
+          link.id = '${SLIDE_OVERLAY_ID}_font';
+          link.rel = 'stylesheet';
+          link.href = 'https://fonts.googleapis.com/css2?family=${encoded}&display=swap';
+          document.head.appendChild(link);
+        }
+        if (!link.sheet) {
+          await Promise.race([
+            new Promise(function(ok, fail) { link.onload = ok; link.onerror = fail; }),
+            new Promise(function(r) { setTimeout(r, 3000); }),
+          ]);
+        }
+        await Promise.race([
+          document.fonts.load('700 64px "${escaped}"'),
+          new Promise(function(r) { setTimeout(r, 3000); }),
+        ]);
+      } catch {}
+    })()
+  `).catch(() => {});
+}
+
 async function injectSlideOverlay(
   page: Page,
   title: string,
@@ -81,21 +112,13 @@ async function injectSlideOverlay(
     ? `"${fontFamily}", system-ui, -apple-system, sans-serif`
     : 'system-ui, -apple-system, sans-serif';
 
-  // Use string-based evaluate to avoid TypeScript checking browser globals
-  let script = '';
+  // Preload font before showing the overlay so the capture loop
+  // never records frames with the fallback font.
   if (fontFamily) {
-    const encoded = encodeURIComponent(fontFamily);
-    script += `
-      if (!document.getElementById('${SLIDE_OVERLAY_ID}_font')) {
-        var link = document.createElement('link');
-        link.id = '${SLIDE_OVERLAY_ID}_font';
-        link.rel = 'stylesheet';
-        link.href = 'https://fonts.googleapis.com/css2?family=${encoded}&display=swap';
-        document.head.appendChild(link);
-      }
-    `;
+    await preloadFont(page, fontFamily);
   }
-  script += `
+
+  let script = `
     var overlay = document.createElement('div');
     overlay.id = '${SLIDE_OVERLAY_ID}';
     overlay.style.cssText = 'position:fixed;inset:0;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;background-color:${escapeJs(brandColor)};font-family:${escapeJs(resolvedFont)};';
@@ -122,20 +145,6 @@ async function injectSlideOverlay(
     document.body.appendChild(overlay);
   `;
   await page.evaluate(script);
-
-  // Wait for font to load if specified, with 3s timeout
-  if (fontFamily) {
-    await page.evaluate(`
-      (async () => {
-        try {
-          await Promise.race([
-            document.fonts.load('700 64px "${escapeJs(fontFamily)}"'),
-            new Promise(r => setTimeout(r, 3000)),
-          ]);
-        } catch {}
-      })()
-    `).catch(() => {});
-  }
 }
 
 async function removeSlideOverlay(page: Page): Promise<void> {
@@ -151,12 +160,36 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
   let lastX = 640;
   let lastY = 360;
 
-  async function emitNarration(text: string): Promise<void> {
-    await ctx.pauseCapture();
-    const narration = ctx.popNarration();
-    const file = await ctx.captureOneFrame();
-    const holdFrames = msToFrames(narration.durationMs);
-    if (holdFrames > 1) ctx.addHold(file, holdFrames - 1); // captureOneFrame already added 1
+  // Capture loop runs continuously. These helpers never pause or resume it.
+  // When time needs to pass (narration, slide, wait), we sleep and let the
+  // capture loop record real frames throughout.
+
+  // Transition state: track the last slide frame for before/after images.
+  // These are cleared by any non-slide action so they're only used when
+  // sw.transition() is called directly after sw.scene({ slide }).
+  let lastSlideFile: string | null = null;
+  let lastSlideEntryIndex = -1;
+  let pendingTransitionMarker: TransitionMarker | null = null;
+
+  /** Clear slide tracking — called at the start of every non-slide action. */
+  function clearSlideState(): void {
+    lastSlideFile = null;
+    lastSlideEntryIndex = -1;
+  }
+
+  /**
+   * Resolve a pending transition marker by taking an explicit screenshot
+   * of the settled page state. Deterministic — no timing dependency on
+   * the capture loop.
+   */
+  async function resolvePendingTransition(): Promise<void> {
+    if (!pendingTransitionMarker || ctx.manifest.length === 0) return;
+    pendingTransitionMarker.afterFile = await ctx.captureTransitionFrame();
+    pendingTransitionMarker = null;
+    ctx.transitionPending = false;
+  }
+
+  function emitNarrationEvent(narration: PregeneratedNarration): void {
     collector.emit({
       type: 'narration',
       timestampMs: ctx.currentTimeMs(),
@@ -164,7 +197,6 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
       audioDurationMs: narration.durationMs,
       audioFile: narration.audioFile,
     });
-    ctx.resumeCapture();
   }
 
   async function moveCursorTo(toX: number, toY: number): Promise<void> {
@@ -200,15 +232,11 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
     return err;
   }
 
-  /** Resolve a pending transition after an action settles. */
-  async function resolveTransition(): Promise<void> {
-    if (!ctx.transitionPending) return;
-    const file = await ctx.captureOneFrame();
-    // The "after" frame is now in the manifest — resume capture
-    ctx.transitionPending = false;
-    ctx.resumeCapture();
-    // We don't need the file reference; it's in the manifest at the correct position
-    void file;
+  /** Sleep for remaining narration time after an action settles. */
+  async function sleepRemainingNarration(startMs: number, durationMs: number): Promise<void> {
+    const elapsedMs = ctx.currentTimeMs() - startMs;
+    const remainingMs = durationMs - elapsedMs;
+    if (remainingMs > 0) await page.waitForTimeout(remainingMs);
   }
 
   return {
@@ -225,43 +253,44 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
         slide = descriptionOrOptions.slide;
       }
 
+      collector.emit({ type: 'scene', timestampMs: ctx.currentTimeMs(), title, description, slide });
+
       if (slide) {
-        // DOM injection slide
-        await ctx.pauseCapture();
         const slideDurationMs = slide.duration ?? DEFAULT_SLIDE_DURATION_MS;
-
+        const manifestLenBefore = ctx.manifest.length;
         await injectSlideOverlay(page, title, description, slide, branding);
-        try {
-          const file = await ctx.captureOneFrame();
-          const holdFrames = msToFrames(slideDurationMs);
-          if (holdFrames > 1) ctx.addHold(file, holdFrames - 1);
-        } finally {
-          await removeSlideOverlay(page);
-        }
+        await page.waitForTimeout(slideDurationMs);
 
-        collector.emit({ type: 'scene', timestampMs: ctx.currentTimeMs(), title, description, slide });
+        // Take an explicit screenshot of the slide for transition images.
+        // This is deterministic — no dependency on capture loop timing.
+        const slideFrame = await ctx.captureTransitionFrame();
 
-        // If transition was pending, the slide resolves it
-        if (ctx.transitionPending) {
+        // Resolve pending transition: this slide is the "after" image.
+        if (pendingTransitionMarker && ctx.manifest.length > 0) {
+          pendingTransitionMarker.afterFile = slideFrame;
+          // Skip junk frames between the previous slide removal and this overlay injection.
+          const junkFrames = manifestLenBefore - pendingTransitionMarker.afterEntryIndex;
+          if (junkFrames > 1) {
+            pendingTransitionMarker.consumedFrames = junkFrames;
+          }
+          pendingTransitionMarker = null;
           ctx.transitionPending = false;
         }
 
-        // Do NOT resume capture here — the slide is self-contained.
-        // Resuming would capture blank-page frames that corrupt subsequent
-        // transition markers.  The next real action resumes capture.
-      } else {
-        // No slide — just emit scene marker
-        collector.emit({ type: 'scene', timestampMs: ctx.currentTimeMs(), title, description });
+        // Save slide frame before removing overlay — used as
+        // "before" image if sw.transition() is called after this scene.
+        lastSlideFile = slideFrame;
+        lastSlideEntryIndex = ctx.manifest.length - 1;
+
+        await removeSlideOverlay(page);
       }
     },
 
     async navigate(url, actionOpts) {
-      if (actionOpts?.narration) await emitNarration(actionOpts.narration);
-
-      const wasPending = ctx.transitionPending;
-      if (wasPending) {
-        // Capture loop is already paused from transition()
-      }
+      clearSlideState();
+      const narration = actionOpts?.narration ? ctx.popNarration() : null;
+      const narStartMs = narration ? ctx.currentTimeMs() : 0;
+      if (narration) emitNarrationEvent(narration);
 
       const startMs = ctx.currentTimeMs();
       try {
@@ -279,17 +308,15 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
         throw actionError('navigate', url, err);
       }
 
-      if (wasPending) {
-        await resolveTransition();
-      } else {
-        ctx.resumeCapture();
-      }
+      await resolvePendingTransition();
+      if (narration) await sleepRemainingNarration(narStartMs, narration.durationMs);
     },
 
     async click(selector, actionOpts) {
-      if (actionOpts?.narration) await emitNarration(actionOpts.narration);
-
-      const wasPending = ctx.transitionPending;
+      clearSlideState();
+      const narration = actionOpts?.narration ? ctx.popNarration() : null;
+      const narStartMs = narration ? ctx.currentTimeMs() : 0;
+      if (narration) emitNarrationEvent(narration);
 
       try {
         const center = await resolveCenter(selector);
@@ -311,17 +338,45 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
         throw actionError('click', selector, err);
       }
 
-      if (wasPending) {
-        await resolveTransition();
-      } else {
-        ctx.resumeCapture();
+      await resolvePendingTransition();
+      if (narration) await sleepRemainingNarration(narStartMs, narration.durationMs);
+    },
+
+    async dblclick(selector, actionOpts) {
+      clearSlideState();
+      const narration = actionOpts?.narration ? ctx.popNarration() : null;
+      const narStartMs = narration ? ctx.currentTimeMs() : 0;
+      if (narration) emitNarrationEvent(narration);
+
+      try {
+        const center = await resolveCenter(selector);
+        await moveCursorTo(center.x, center.y);
+        const locator = page.locator(selector).first();
+        const box = await locator.boundingBox();
+        const startMs = ctx.currentTimeMs();
+        await locator.dblclick();
+        collector.emit({
+          type: 'action',
+          action: 'dblclick',
+          selector,
+          durationMs: 200,
+          boundingBox: box ? { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) } : null,
+          timestampMs: startMs,
+          settledAtMs: ctx.currentTimeMs(),
+        });
+      } catch (err) {
+        throw actionError('dblclick', selector, err);
       }
+
+      await resolvePendingTransition();
+      if (narration) await sleepRemainingNarration(narStartMs, narration.durationMs);
     },
 
     async fill(selector, value, actionOpts) {
-      if (actionOpts?.narration) await emitNarration(actionOpts.narration);
-
-      const wasPending = ctx.transitionPending;
+      clearSlideState();
+      const narration = actionOpts?.narration ? ctx.popNarration() : null;
+      const narStartMs = narration ? ctx.currentTimeMs() : 0;
+      if (narration) emitNarrationEvent(narration);
 
       try {
         const center = await resolveCenter(selector);
@@ -347,17 +402,15 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
         throw actionError('fill', selector, err);
       }
 
-      if (wasPending) {
-        await resolveTransition();
-      } else {
-        ctx.resumeCapture();
-      }
+      await resolvePendingTransition();
+      if (narration) await sleepRemainingNarration(narStartMs, narration.durationMs);
     },
 
     async hover(selector, actionOpts) {
-      if (actionOpts?.narration) await emitNarration(actionOpts.narration);
-
-      const wasPending = ctx.transitionPending;
+      clearSlideState();
+      const narration = actionOpts?.narration ? ctx.popNarration() : null;
+      const narStartMs = narration ? ctx.currentTimeMs() : 0;
+      if (narration) emitNarrationEvent(narration);
 
       try {
         const center = await resolveCenter(selector);
@@ -379,17 +432,15 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
         throw actionError('hover', selector, err);
       }
 
-      if (wasPending) {
-        await resolveTransition();
-      } else {
-        ctx.resumeCapture();
-      }
+      await resolvePendingTransition();
+      if (narration) await sleepRemainingNarration(narStartMs, narration.durationMs);
     },
 
     async press(key, actionOpts) {
-      if (actionOpts?.narration) await emitNarration(actionOpts.narration);
-
-      const wasPending = ctx.transitionPending;
+      clearSlideState();
+      const narration = actionOpts?.narration ? ctx.popNarration() : null;
+      const narStartMs = narration ? ctx.currentTimeMs() : 0;
+      if (narration) emitNarrationEvent(narration);
 
       const startMs = ctx.currentTimeMs();
       try {
@@ -407,31 +458,21 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
         throw actionError('press', key, err);
       }
 
-      if (wasPending) {
-        await resolveTransition();
-      } else {
-        ctx.resumeCapture();
-      }
+      await resolvePendingTransition();
+      if (narration) await sleepRemainingNarration(narStartMs, narration.durationMs);
     },
 
     async wait(ms) {
-      if (ctx.transitionPending) {
-        // Capture loop is already paused. Wait for real settling, then hold.
-        await page.waitForTimeout(ms);
-        const file = await ctx.captureOneFrame();
-        const holdFrames = msToFrames(ms);
-        if (holdFrames > 1) ctx.addHold(file, holdFrames - 1);
-        collector.emit({ type: 'wait', timestampMs: ctx.currentTimeMs(), durationMs: ms, reason: 'pacing' as const });
-      } else {
-        // Ensure capture is running — captures real frames during the wait
-        ctx.resumeCapture();
-        collector.emit({ type: 'wait', timestampMs: ctx.currentTimeMs(), durationMs: ms, reason: 'pacing' as const });
-        await page.waitForTimeout(ms);
-      }
+      clearSlideState();
+      collector.emit({ type: 'wait', timestampMs: ctx.currentTimeMs(), durationMs: ms, reason: 'pacing' as const });
+      await page.waitForTimeout(ms);
     },
 
     async narrate(text) {
-      await emitNarration(text);
+      clearSlideState();
+      const narration = ctx.popNarration();
+      emitNarrationEvent(narration);
+      await page.waitForTimeout(narration.durationMs);
     },
 
     async transition(transitionOpts) {
@@ -440,21 +481,20 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
         throw new Error(`sw.transition() duration must be a positive number, got ${durationMs}`);
       }
 
-      if (ctx.transitionPending) {
-        console.warn('sw.transition() called twice with no action between them — replacing previous transition marker.');
-        // Remove the last marker
-        const markers = (ctx as any)._transitionMarkers;
-        if (markers && markers.length > 0) markers.pop();
-      }
-
-      await ctx.pauseCapture();
-      ctx.addTransitionMarker({
-        afterEntryIndex: ctx.manifest.length - 1,
+      const marker: TransitionMarker = {
+        afterEntryIndex: lastSlideEntryIndex >= 0 ? lastSlideEntryIndex : ctx.manifest.length - 1,
         transition: transitionOpts?.type ?? 'fade',
         durationFrames: msToFrames(durationMs),
-      });
+      };
+
+      // Use the saved slide frame as the explicit "before" image
+      if (lastSlideFile) {
+        marker.beforeFile = lastSlideFile;
+      }
+
+      ctx.addTransitionMarker(marker);
+      pendingTransitionMarker = marker;
       ctx.transitionPending = true;
-      // Capture loop stays paused — next resolving action will resume it
     },
   };
 }
