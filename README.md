@@ -83,7 +83,7 @@ npx screenwright init [--tts piper|openai] [--piper-voice <model>] [--openai-voi
 
 ### `screenwright generate`
 
-Generate a demo scenario from a Playwright test, or validate an existing one.
+Prepare LLM prompts for demo scenario generation, or validate an existing scenario. With `--test`, reads your Playwright test and prints a system/user prompt pair — pipe them to any LLM, or use the `/screenwright` skill in Claude Code which handles this automatically. With `--validate`, checks that a scenario file uses the `sw.*` API correctly.
 
 ```bash
 npx screenwright generate --test <path> [--out <path>] [--narration-style brief|detailed] [--app-description <desc>]
