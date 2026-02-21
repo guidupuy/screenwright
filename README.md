@@ -181,7 +181,7 @@ await sw.transition({ type: 'cube', duration: 800 });
 await sw.scene('Second Scene', { slide: { duration: 1500 } });
 ```
 
-![Transitions showcase](docs/transitions-showcase.gif)
+![Transitions showcase](docs/transitions-showcase.gif?v=2)
 
 | Transition | Description |
 |------------|-------------|
