@@ -18,7 +18,7 @@ screenwright --version || npx screenwright --version
 
 This skill requires CLI version **0.0.x**. If the CLI is not installed or the major/minor version doesn't match, tell the user:
 > Install the compatible version: `npm install -g screenwright@0.0`
-> Then run `screenwright init` to download the voice model.
+> Then run `screenwright init` to configure the tool for your repo.
 
 ## Output Directory
 
@@ -82,7 +82,9 @@ The scenario must:
 - Organize into 2-5 scenes
 - Replace test/faker data with human-friendly values
 - Add narration to key actions
-- Use `sw.wait()` for pacing, adding deliberate pauses where the viewer needs time to absorb the screen. As a general rule, don't be too generous on the pauses - dead time is awkward in a demo video.
+- Use `sw.wait()` for pacing, adding deliberate pauses where the viewer needs time to absorb the screen: 
+    - Two consecutive narrations typically need a 1000ms pause in between.
+    - Outside of this, as a general rule, don't be too generous on the pauses - dead time is awkward in a demo video. 
 - NOT include any assertions
 - NOT use `page.*` methods directly — always use `sw.*` helpers
 - NOT import expect, assert, or any test library
@@ -97,10 +99,14 @@ export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.navigate('http://localhost:3000/login', {
     narration: "Let's start by logging into the dashboard.",
   });
+  await sw.wait(1000);
+  
   await sw.fill('[data-testid="email"]', 'sarah@acme.co', {
     narration: 'Enter our email address.',
   });
   await sw.fill('[data-testid="password"]', 'SecurePass123');
+  // No pause needed (filling in password creates it)
+  
   await sw.click('[data-testid="login-btn"]', {
     narration: 'Click sign in.',
   });
@@ -143,6 +149,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
   await sw.click('[data-testid="submit-btn"]', {
     narration: 'Submit the application.',
   });
+  await sw.wait(1000);
   await sw.narrate('The application has been submitted successfully.');
 }
 ```
@@ -178,7 +185,7 @@ Write the approved scenario to `.screenwright/scenarios/<test-name>-demo.ts`.
 
 Run the CLI to record and compose the final video:
 ```bash
-screenwright compose .screenwright/scenarios/<name>-demo.ts --out .screenwright/output/<name>-demo.mp4
+npx screenwright compose .screenwright/scenarios/<name>-demo.ts --out .screenwright/output/<name>-demo.mp4
 ```
 
 Options the user can request:

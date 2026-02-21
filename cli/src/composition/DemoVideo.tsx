@@ -37,6 +37,10 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
     (e): e is NarrationEvent => e.type === 'narration'
   );
 
+  const rawCursorTargets = remappedEvents.filter(
+    (e): e is CursorTargetEvent => e.type === 'cursor_target'
+  );
+
   const slideScenes = remappedEvents.filter(
     (e): e is SceneEvent => e.type === 'scene' && !!e.slide
   );
@@ -84,9 +88,13 @@ export const DemoVideo: React.FC<Props> = ({ timeline, branding }) => {
   }
 
   const currentTimeMs = (frame / fps) * 1000;
+  // Hide the cursor from each slide's start until the next cursor_target
+  // event — this covers the full slide display including deferred overlay
+  // removal, without relying on duration arithmetic.
   const duringSlide = slideScenes.some(s => {
-    const dur = s.slide!.duration ?? 2000;
-    return currentTimeMs >= s.timestampMs && currentTimeMs < s.timestampMs + dur;
+    if (currentTimeMs < s.timestampMs) return false;
+    const nextCursor = rawCursorTargets.find(c => c.timestampMs > s.timestampMs);
+    return currentTimeMs < (nextCursor ? nextCursor.timestampMs : Infinity);
   });
   const showCursor = resolution.type !== 'transition' && !duringSlide;
 

@@ -124,6 +124,8 @@ async function injectSlideOverlay(
   }
 
   let script = `
+    var _old = document.getElementById('${SLIDE_OVERLAY_ID}');
+    if (_old) _old.remove();
     var overlay = document.createElement('div');
     overlay.id = '${SLIDE_OVERLAY_ID}';
     overlay.style.cssText = 'position:fixed;inset:0;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;background-color:${escapeJs(brandColor)};font-family:${escapeJs(resolvedFont)};';
@@ -176,10 +178,18 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
   let lastSlideEntryIndex = -1;
   let pendingTransitionMarker: TransitionMarker | null = null;
 
+  let slideOverlayActive = false;
+
   /** Clear slide tracking — called at the start of every non-slide action. */
   function clearSlideState(): void {
     lastSlideFile = null;
     lastSlideEntryIndex = -1;
+    if (slideOverlayActive) {
+      // Remove lazily — deferred from scene() to avoid capturing bare-page
+      // frames between overlay removal and the next action.
+      removeSlideOverlay(page);
+      slideOverlayActive = false;
+    }
   }
 
   /**
@@ -302,7 +312,9 @@ export function createHelpers(page: Page, collector: TimelineCollector, ctx: Rec
         lastSlideFile = slideFrame;
         lastSlideEntryIndex = ctx.manifest.length - 1;
 
-        await removeSlideOverlay(page);
+        // Don't remove the overlay here — defer to clearSlideState() so
+        // the capture loop never grabs bare-page frames between slides.
+        slideOverlayActive = true;
       }
     },
 
