@@ -1,4 +1,4 @@
-# Screenwright
+# 🎬 Screenwright
 
 [![npm version](https://img.shields.io/npm/v/screenwright)](https://www.npmjs.com/package/screenwright)
 [![CI](https://github.com/guidupuy/screenwright/actions/workflows/ci.yml/badge.svg)](https://github.com/guidupuy/screenwright/actions/workflows/ci.yml)
