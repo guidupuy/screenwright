@@ -160,7 +160,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
 | Method | Description |
 |--------|-------------|
 | `sw.scene(title)` | Mark a scene boundary (no slide) |
-| `sw.scene(title, { slide?: { duration?, brandColor?, textColor?, fontFamily?, titleFontSize? } })` | Scene with optional transition slide. Pass `{ slide: {} }` for defaults (2000ms duration / config branding) |
+| `sw.scene(title, { slide?: { duration?, brandColor?, textColor?, fontFamily?, titleFontSize?, narrate? } })` | Scene with optional transition slide. `narrate` adds voiceover to the slide (auto-extends duration to fit). Pass `{ slide: {} }` for defaults (2000ms duration / config branding) |
 | `sw.navigate(url, { narration? })` | Navigate to URL |
 | `sw.click(selector, { narration? })` | Click an element |
 | `sw.dblclick(selector, { narration? })` | Double-click an element |
