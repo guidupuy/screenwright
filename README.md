@@ -12,14 +12,14 @@ Screenwright analyzes your existing Playwright tests, generates a cinematic "dem
 
 ```
 Playwright test → Demo scenario → Record with pacing → Compose video
-                  (human data,     (Playwright +        (Remotion:
+                  (human data,     (Playwright +        (Remotion: transitions,
                    narration cues)  video capture)       cursor + audio)
 ```
 
 1. **Analyze** your Playwright test
 2. **Generate** a demo scenario with natural pacing, realistic data, and narration
 3. **Record** the scenario in Playwright with video capture
-4. **Compose** the final video with cursor overlay and voiceover via Remotion
+4. **Compose** the final video with transitions, cursor overlay, and voiceover via Remotion
 
 ## Installation
 
@@ -40,11 +40,10 @@ npx screenwright init
 
 ```bash
 mkdir -p ~/.claude/skills/screenwright
-curl -sL https://raw.githubusercontent.com/guidupuy/screenwright/main/skill/SKILL.md \
-  -o ~/.claude/skills/screenwright/SKILL.md
+npx screenwright skill > ~/.claude/skills/screenwright/SKILL.md
 ```
 
-Once installed, the skill is automatically kept in sync when you upgrade the `screenwright` npm package.
+The postinstall hook tries to keep the skill in sync on upgrade, but if lifecycle scripts are disabled (`--ignore-scripts`), re-run the command above after upgrading.
 
 Then use `/screenwright` in Claude Code to get started.
 
@@ -85,7 +84,7 @@ npx screenwright init [--tts piper|openai] [--voice <model>] [--openai-voice <vo
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--tts` | (interactive) | TTS provider: `piper` (local/free) or `openai` (cloud/higher quality) |
+| `--tts` | (interactive) | TTS provider: `openai` (recommended) or `piper` (local/free, lower quality) |
 | `--voice` | `en_US-amy-medium` | Piper TTS voice model |
 | `--openai-voice` | `nova` | OpenAI voice name |
 | `--skip-voice-download` | false | Skip downloading Piper voice model |
@@ -233,7 +232,7 @@ Follow the suggestion to lower the frame rate to match your machine's capability
 ```typescript
 const config = {
   // TTS
-  ttsProvider: "piper",              // "piper" (local/free) or "openai" (cloud)
+  ttsProvider: "openai",             // "openai" (recommended) or "piper" (local/free, lower quality)
   voice: "en_US-amy-medium",         // Piper voice model
   openaiVoice: "nova",               // OpenAI voice (when ttsProvider is "openai")
   openaiTtsInstructions: "...",       // Tone instructions for OpenAI TTS
