@@ -8,6 +8,10 @@ Turn Playwright E2E tests into polished product demo videos.
 
 Screenwright analyzes your existing Playwright tests, generates a cinematic "demo scenario" with human pacing and narration, records it with video capture, then composites cursor animation and voiceover into a final MP4.
 
+## Example
+
+https://github.com/user-attachments/assets/e925a4fb-ddc2-4740-9e30-23ad1768f29d
+
 ## How It Works
 
 ```
