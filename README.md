@@ -160,6 +160,7 @@ export default async function scenario(sw: ScreenwrightHelpers) {
 | `sw.scene(title, { slide?: { duration?, brandColor?, textColor?, fontFamily?, titleFontSize? } })` | Scene with optional transition slide. Pass `{ slide: {} }` for defaults (2000ms duration / config branding) |
 | `sw.navigate(url, { narration? })` | Navigate to URL |
 | `sw.click(selector, { narration? })` | Click an element |
+| `sw.dblclick(selector, { narration? })` | Double-click an element |
 | `sw.fill(selector, value, { narration? })` | Type into an input (character by character) |
 | `sw.hover(selector, { narration? })` | Hover over an element |
 | `sw.press(key, { narration? })` | Press a keyboard key |
@@ -214,7 +215,7 @@ Screenwright records at **30 fps** by default. During recording, each captured s
 
 ### Low-power machines
 
-If your machine can't sustain 30 fps (i.e., each screenshot takes longer than ~33 ms), the virtual clock falls behind wall time. This causes narration audio to overlap in the output because the virtual duration of each segment becomes shorter than the actual audio.
+If your machine can't sustain 30 fps (i.e., each screenshot takes longer than ~33 ms), the virtual clock falls behind wall time. This can cause narration audio to overlap in the output because the virtual duration of each segment becomes shorter than the actual audio.
 
 Screenwright detects this automatically. If the actual capture rate drops below 85% of the target, you'll see a warning:
 
