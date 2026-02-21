@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1280">
+  <title>instaclaw — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-wrapper">
+      <div class="login-card">
+        <div class="login-logo"><em class="claw-icon">🦞</em> instaclaw</div>
+        <form class="login-form" onsubmit="return false">
+          <input data-testid="email" type="email" placeholder="Email address">
+          <input data-testid="password" type="password" placeholder="Password">
+          <button data-testid="signin" type="button" class="btn-login">Log In</button>
+        </form>
+        <div class="login-divider">OR</div>
+        <p style="text-align: center; margin-top: 12px;"><a class="login-link" href="#">Forgot password?</a></p>
+      </div>
+      <div class="login-footer-card">
+        Don't have an account? <a href="#">Hatch one</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

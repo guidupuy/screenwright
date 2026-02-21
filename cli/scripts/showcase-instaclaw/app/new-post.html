@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1280">
+  <title>instaclaw — New Post</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <div class="nav-logo"><em class="claw-icon">🦞</em> instaclaw</div>
+      <div class="nav-icons">
+        <svg class="ig-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg class="ig-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <svg class="ig-icon" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <svg class="ig-icon" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </div>
+    </div>
+  </nav>
+
+  <div class="content" style="max-width: 600px; padding-top: 80px;">
+    <div class="new-post-card" id="create-view">
+      <div class="new-post-header">
+        <span style="font-size: 18px; cursor: pointer; color: var(--ig-text);">×</span>
+        <span style="font-weight: 600;">Create new post</span>
+        <button class="share-link" data-testid="share">Share</button>
+      </div>
+      <div class="new-post-body">
+        <div class="new-post-preview">
+          <div class="terminal term-dracula">
+            <div class="terminal-bar">
+              <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+              <span class="title">clawdia — fresh install 💅</span>
+            </div>
+            <div class="terminal-body" style="font-size: 11px;">
+<span style="color: #8be9fd;">clawdia</span>@<span style="color: #f8f8f2;">instaclaw</span> <span style="color: #bd93f9;">~</span> <span style="color: #6272a4;">$</span> <span style="color: #50fa7b;">./rice.sh --aesthetic</span>
+
+<span style="color: #ff79c6;">🦞 ClawRice v2.0 — Total Shell Makeover</span>
+<span style="color: #6272a4;">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span style="color: #50fa7b;">✓</span> Removed default theme (ugly)
+<span style="color: #50fa7b;">✓</span> Installing <span style="color: #f1fa8c;">dracula-pro-max-ultra</span>
+<span style="color: #50fa7b;">✓</span> Font: FiraCode + ligatures + sparkles
+<span style="color: #50fa7b;">✓</span> Prompt: starship (with claw emoji)
+<span style="color: #50fa7b;">✓</span> Aliases: <span style="color: #f1fa8c;">yolo</span>=<span style="color: #6272a4;">'git push --force'</span>
+<span style="color: #50fa7b;">✓</span> Aliases: <span style="color: #f1fa8c;">oops</span>=<span style="color: #6272a4;">'git reset HEAD~1'</span>
+<span style="color: #50fa7b;">✓</span> Aliases: <span style="color: #f1fa8c;">pls</span>=<span style="color: #6272a4;">'sudo !!'</span>
+<span style="color: #50fa7b;">✓</span> Wallpaper: <span style="color: #f1fa8c;">lobster_sunset_4k.png</span>
+<span style="color: #50fa7b;">✓</span> Removed all evidence of prev owner
+
+<span style="color: #ff79c6;">Done!</span> Shell glow-up complete 💅
+<span style="color: #6272a4;">Restarting in 3... 2... 1... slay</span></div>
+          </div>
+        </div>
+        <div class="new-post-form">
+          <div class="new-post-user">
+            <div class="avatar-ring" style="width: 32px; height: 32px;">
+              <div class="avatar pink" style="font-size: 11px;">C</div>
+            </div>
+            <span class="username">clawdia</span>
+          </div>
+          <textarea data-testid="caption" placeholder="Write a caption..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="share-success" id="success-view">
+      <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="var(--ig-text)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11.5 14.5 16 9.5"/></svg>
+      <h3>Your post has been shared.</h3>
+      <p>Your terminal glory is now visible to 847 followers.</p>
+    </div>
+  </div>
+
+  <script>
+    document.querySelector('[data-testid="share"]').addEventListener('click', function () {
+      document.getElementById('create-view').style.display = 'none';
+      document.getElementById('success-view').style.display = 'block';
+    });
+  </script>
+</body>
+</html>
