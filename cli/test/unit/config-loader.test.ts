@@ -17,7 +17,7 @@ describe('loadConfig', () => {
       const config = await loadConfig(dir);
       expect(config.ttsProvider).toBe('piper');
       expect(config.openaiVoice).toBe('nova');
-      expect(config.voice).toBe('en_US-amy-medium');
+      expect(config.piperVoice).toBe('en_US-amy-medium');
 
     } finally {
       await rm(dir, { recursive: true, force: true });
@@ -36,7 +36,7 @@ describe('loadConfig', () => {
       expect(config.ttsProvider).toBe('openai');
       // Defaults applied for omitted fields
       expect(config.openaiVoice).toBe('nova');
-      expect(config.voice).toBe('en_US-amy-medium');
+      expect(config.piperVoice).toBe('en_US-amy-medium');
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
